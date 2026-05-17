@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Shelf — No Shelf Control</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="page">
+
+  <header class="site-header">
+    <div class="nav">
+      <a href="index.html" class="brand-logo">
+        <img src="images/logo.png" alt="No Shelf Control" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+        <span class="fallback-brand" style="display:none"><span class="script">no</span>Shelf Control</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="reads.html">Reads</a></li>
+        <li><a href="shelf.html" class="active">The Shelf</a></li>
+        <li><a href="tbr.html">TBR</a></li>
+        <li><a href="members.html">Members</a></li>
+      </ul>
+      <a href="reads.html#submit-review" class="nav-cta">Submit Review</a>
+    </div>
+  </header>
+
+  <section class="section-dark" style="padding-top: 6rem;">
+    <div class="container">
+      <div class="section-eyebrow">Year by Year</div>
+      <h1 class="section-title" style="font-size: clamp(2.5rem, 5vw, 4.25rem); margin-bottom: 1rem;">The <span class="accent">Shelf</span></h1>
+      <p class="section-intro">Every book we've read, lined up on a shelf for each year. Click any cover to open the discussion questions and meeting info.</p>
+
+      <div class="toolbar" style="margin-top: 2rem;">
+        <div class="toolbar-title">Pick a year and start scrolling →</div>
+        <button class="btn" id="add-shelf-btn"><span class="btn-icon-arrow">+</span> Add Book to Shelf</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="shelves-root"></div>
+
+  <!-- Book Detail Modal -->
+  <div class="modal-backdrop" id="detail-modal">
+    <div class="modal">
+      <button class="modal-close" id="detail-close" aria-label="Close">×</button>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
+  <!-- Add to Shelf Modal -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <button class="modal-close" id="add-close" aria-label="Close">×</button>
+      <h2 class="modal-title">Add a Book to the Shelf</h2>
+      <div class="modal-sub">Drop in the book details, cover, and any discussion questions you've drafted.</div>
+
+      <form id="add-form">
+        <div class="field-grid">
+          <div class="field full"><label for="f-title">Book Title</label><input id="f-title" type="text" required /></div>
+          <div class="field"><label for="f-author">Author</label><input id="f-author" type="text" required /></div>
+          <div class="field"><label for="f-genre">Genre</label><input id="f-genre" type="text" required /></div>
+          <div class="field"><label for="f-pages">Pages</label><input id="f-pages" type="number" min="1" required /></div>
+          <div class="field"><label for="f-gr">Goodreads Rating</label><input id="f-gr" type="number" min="0" max="5" step="0.01" required /></div>
+          <div class="field"><label for="f-date">Meeting Date</label><input id="f-date" type="date" required /></div>
+          <div class="field full"><label for="f-location">Meeting Location</label><input id="f-location" type="text" required /></div>
+
+          <div class="field full">
+            <label>Book Cover Image</label>
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload cover image">
+              <input id="f-cover" type="file" accept="image/*" />
+              <button type="button" class="dropzone-clear" id="dropzone-clear" aria-label="Remove image">×</button>
+              <img class="dropzone-preview" id="dropzone-preview" alt="Cover preview" />
+              <div class="dropzone-content">
+                <div class="dropzone-icon">↑</div>
+                <div class="dropzone-text">Drag a cover image here, or <span class="browse">browse</span></div>
+                <div class="dropzone-sub">PNG or JPG · drop anywhere in this box</div>
+              </div>
+            </div>
+            <p class="notice">Tip: for permanent storage save covers to <code style="font-family:monospace;">images/covers/&lt;book-slug&gt;.jpg</code>.</p>
+          </div>
+
+          <div class="field full">
+            <label>Discussion Questions</label>
+            <div id="q-container"></div>
+            <button type="button" class="btn btn-ghost btn-sm" id="add-question">+ Add Question</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="add-cancel" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Cancel</button>
+          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Save to Shelf</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span class="footer-script">no</span>
+      <div class="footer-brand">Shelf Control</div>
+      <p>A reading club for the wonderfully unhinged.</p>
+      <p class="est">EST · 2024</p>
+    </div>
+  </footer>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  let books = NSC.loadBooks();
+  let coverDataURL = null; // for new book uploads
+  let editingId = null;    // null = adding new, otherwise editing this book id
+
+  function rerender() {
+    books = NSC.loadBooks();
+    renderShelves();
+  }
+
+  function renderShelves() {
+    const root = document.getElementById('shelves-root');
+    // group by year, newest first
+    const byYear = {};
+    books.forEach(b => {
+      const y = NSC.yearOf(b.date) || 'Undated';
+      (byYear[y] = byYear[y] || []).push(b);
+    });
+    const years = Object.keys(byYear).sort((a,b)=> b-a);
+    const yearLabels = { 2026: 'In Progress', 2025: 'A Year of Kuang', 2024: 'Where It All Began' };
+
+    root.innerHTML = years.map((year, idx) => {
+      // sort within year newest first
+      const list = byYear[year].slice().sort((a,b)=> b.date.localeCompare(a.date));
+      const id = `shelf-${year}`;
+      const themeClass = idx % 2 === 0 ? 'section-mid' : 'section-light';
+      return `
+        <section class="${themeClass}" style="padding-top: 3rem; padding-bottom: 3rem;">
+          <div class="container">
+            <div class="year-block" style="margin-bottom: 1rem;">
+              <div class="year-header">
+                <span class="year">${year}</span>
+                <span class="year-meta">${yearLabels[year] || ''}</span>
+              </div>
+              <div class="shelf-wrap">
+                <button class="shelf-nav-btn left" data-target="${id}" aria-label="Scroll left">‹</button>
+                <button class="shelf-nav-btn right" data-target="${id}" aria-label="Scroll right">›</button>
+                <div class="shelf-scroll" id="${id}">
+                  ${list.map(b => `
+                    <div class="shelf-item" data-id="${b.id}" tabindex="0" role="button" aria-label="Open ${NSC.escapeHtml(b.title)}">
+                      ${NSC.bookCoverHTML(b)}
+                      <div class="shelf-caption">
+                        <div class="book-title">${NSC.escapeHtml(b.title)}</div>
+                        <div class="book-author">${NSC.escapeHtml(b.author)}</div>
+                        <span class="month">${NSC.formatMonthYear(b.date)}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+    }).join('');
+
+    // Open detail on click
+    document.querySelectorAll('.shelf-item').forEach(el => {
+      el.addEventListener('click', () => openDetail(el.dataset.id));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(el.dataset.id); } });
+    });
+    document.querySelectorAll('.shelf-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sc = document.getElementById(btn.dataset.target);
+        const delta = btn.classList.contains('right') ? 600 : -600;
+        sc.scrollBy({ left: delta, behavior: 'smooth' });
+      });
+    });
+  }
+
+  function openDetail(id) {
+    const b = books.find(x => x.id === id);
+    if (!b) return;
+    const avg = NSC.avgRating(b);
+    const html = `
+      <div class="modal-cover-row">
+        ${NSC.bookCoverHTML(b)}
+        <div class="modal-meta">
+          <div class="meeting-line">${NSC.formatDate(b.date)} · ${NSC.escapeHtml(b.location)}</div>
+          <h2>${NSC.escapeHtml(b.title)}</h2>
+          <div class="modal-author">by ${NSC.escapeHtml(b.author)}</div>
+          <div class="stats-line">
+            <span><strong>Genre</strong>${NSC.escapeHtml(b.genre)}</span>
+            <span><strong>Pages</strong>${b.pages}</span>
+            <span><strong>Goodreads</strong>${b.goodreads}</span>
+            ${avg !== null ? `<span><strong>Club Avg</strong>${avg.toFixed(2)}</span>` : ''}
+          </div>
+          <div style="display:flex; gap:0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+            <button class="btn btn-sm" data-edit-id="${b.id}"><span class="btn-icon-arrow">✎</span> Edit Book</button>
+            <button class="btn btn-ghost btn-sm" data-delete-id="${b.id}" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="questions-title">Discussion Questions</h3>
+      ${(b.questions && b.questions.length) ? b.questions.map(q => `
+        <details>
+          <summary>${NSC.escapeHtml(q.theme)}</summary>
+          <p>${NSC.escapeHtml(q.text)}</p>
+        </details>
+      `).join('') : '<p style="color: var(--mauve); font-style: italic; font-family: Playfair Display, serif;">No discussion questions yet for this read.</p>'}
+    `;
+    document.getElementById('detail-body').innerHTML = html;
+    document.getElementById('detail-modal').classList.add('open');
+
+    // Wire up edit + delete buttons
+    document.querySelector('[data-edit-id]').addEventListener('click', () => {
+      document.getElementById('detail-modal').classList.remove('open');
+      openEdit(b.id);
+    });
+    document.querySelector('[data-delete-id]').addEventListener('click', () => {
+      if (!confirm(`Remove "${b.title}" from the shelf?`)) return;
+      books = books.filter(x => x.id !== b.id);
+      NSC.saveBooks(books);
+      document.getElementById('detail-modal').classList.remove('open');
+      rerender();
+    });
+  }
+
+  function openAdd() {
+    editingId = null;
+    coverDataURL = null;
+    document.getElementById('add-form').reset();
+    resetDropzone();
+    document.getElementById('q-container').innerHTML = '';
+    addQuestionRow();
+    document.querySelector('#add-modal .modal-title').textContent = 'Add a Book to the Shelf';
+    document.querySelector('#add-modal .modal-sub').textContent = "Drop in the book details, cover, and any discussion questions you've drafted.";
+    document.querySelector('#add-modal button[type="submit"]').innerHTML = '<span class="btn-icon-arrow">»</span> Save to Shelf';
+    document.getElementById('add-modal').classList.add('open');
+  }
+
+  function openEdit(id) {
+    const b = books.find(x => x.id === id);
+    if (!b) return;
+    editingId = id;
+    coverDataURL = null;
+    document.getElementById('add-form').reset();
+
+    document.getElementById('f-title').value = b.title || '';
+    document.getElementById('f-author').value = b.author || '';
+    document.getElementById('f-genre').value = b.genre || '';
+    document.getElementById('f-pages').value = b.pages || '';
+    document.getElementById('f-gr').value = b.goodreads || '';
+    document.getElementById('f-date').value = b.date || '';
+    document.getElementById('f-location').value = b.location || '';
+
+    // Preview existing cover if available
+    resetDropzone();
+    const src = NSC.coverPath(b);
+    const testImg = new Image();
+    testImg.onload = () => { setDropzoneImage(src); };
+    testImg.onerror = () => { resetDropzone(); };
+    testImg.src = src;
+
+    // Pre-populate questions
+    const qc = document.getElementById('q-container');
+    qc.innerHTML = '';
+    if (b.questions && b.questions.length) {
+      b.questions.forEach(q => addQuestionRow(q.theme, q.text));
+    } else {
+      addQuestionRow();
+    }
+
+    document.querySelector('#add-modal .modal-title').textContent = 'Edit Book';
+    document.querySelector('#add-modal .modal-sub').textContent = "Update any details below. Changes save when you hit Save.";
+    document.querySelector('#add-modal button[type="submit"]').innerHTML = '<span class="btn-icon-arrow">»</span> Save Changes';
+    document.getElementById('add-modal').classList.add('open');
+  }
+
+  function addQuestionRow(theme = '', text = '') {
+    const c = document.getElementById('q-container');
+    const idx = c.children.length;
+    const div = document.createElement('div');
+    div.style.cssText = 'border:1px dashed rgba(166,104,104,0.3); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem;';
+    div.innerHTML = `
+      <input class="q-theme" type="text" placeholder="Theme (e.g. Power and Hierarchy)" value="${NSC.escapeHtml(theme)}" style="margin-bottom:0.5rem; width:100%; font:inherit; padding:0.55rem 0.7rem; border:1px solid rgba(166,104,104,0.3); border-radius:6px;" />
+      <textarea class="q-text" rows="3" placeholder="Question text" style="width:100%; font:inherit; padding:0.55rem 0.7rem; border:1px solid rgba(166,104,104,0.3); border-radius:6px;">${NSC.escapeHtml(text)}</textarea>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:0.4rem;" onclick="this.parentElement.remove()">Remove</button>
+    `;
+    c.appendChild(div);
+  }
+  window._addQ = addQuestionRow;
+
+  // Modal closers
+  document.getElementById('detail-close').addEventListener('click', () => document.getElementById('detail-modal').classList.remove('open'));
+  document.getElementById('detail-modal').addEventListener('click', (e) => { if (e.target.id === 'detail-modal') e.currentTarget.classList.remove('open'); });
+  document.getElementById('add-close').addEventListener('click', () => document.getElementById('add-modal').classList.remove('open'));
+  document.getElementById('add-cancel').addEventListener('click', () => document.getElementById('add-modal').classList.remove('open'));
+  document.getElementById('add-modal').addEventListener('click', (e) => { if (e.target.id === 'add-modal') e.currentTarget.classList.remove('open'); });
+
+  // Top-bar add button
+  document.getElementById('add-shelf-btn').addEventListener('click', openAdd);
+  document.getElementById('add-question').addEventListener('click', () => addQuestionRow());
+
+  // Drag-and-drop cover image upload
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('f-cover');
+  const dropzonePreview = document.getElementById('dropzone-preview');
+  const dropzoneClear = document.getElementById('dropzone-clear');
+
+  function setDropzoneImage(src) {
+    dropzonePreview.src = src;
+    dropzone.classList.add('has-image');
+  }
+  function resetDropzone() {
+    coverDataURL = null;
+    dropzonePreview.removeAttribute('src');
+    dropzone.classList.remove('has-image');
+    fileInput.value = '';
+  }
+  // expose for openAdd/openEdit
+  window._resetDropzone = resetDropzone;
+  window._setDropzoneImage = setDropzoneImage;
+
+  function handleCoverFile(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      alert('Please drop an image file (PNG, JPG, GIF, WebP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      coverDataURL = ev.target.result;
+      setDropzoneImage(coverDataURL);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Click to browse
+  dropzone.addEventListener('click', (e) => {
+    if (e.target === dropzoneClear) return;
+    fileInput.click();
+  });
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+
+  // File input change
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleCoverFile(file);
+  });
+
+  // Clear button
+  dropzoneClear.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetDropzone();
+  });
+
+  // Drag events
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      // Only un-highlight when truly leaving the dropzone
+      if (evt === 'dragleave' && dropzone.contains(e.relatedTarget)) return;
+      dropzone.classList.remove('dragover');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    dropzone.classList.remove('dragover');
+    const dt = e.dataTransfer;
+    const file = dt && dt.files && dt.files[0];
+    if (file) handleCoverFile(file);
+  });
+
+  // Prevent the whole page from accepting drops (so a missed drop doesn't navigate away)
+  ['dragover', 'drop'].forEach(evt => {
+    window.addEventListener(evt, (e) => {
+      // Only prevent if the user is dragging while the modal is open
+      if (document.getElementById('add-modal').classList.contains('open') && !dropzone.contains(e.target)) {
+        e.preventDefault();
+      }
+    });
+  });
+
+  // Submit add/edit form
+  document.getElementById('add-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('f-title').value.trim();
+    const author = document.getElementById('f-author').value.trim();
+    const genre = document.getElementById('f-genre').value.trim();
+    const pages = parseInt(document.getElementById('f-pages').value, 10);
+    const goodreads = parseFloat(document.getElementById('f-gr').value);
+    const date = document.getElementById('f-date').value;
+    const location = document.getElementById('f-location').value.trim();
+    const questions = Array.from(document.querySelectorAll('#q-container > div'))
+      .map(div => ({
+        theme: div.querySelector('.q-theme').value.trim(),
+        text: div.querySelector('.q-text').value.trim()
+      }))
+      .filter(q => q.theme || q.text);
+
+    if (editingId) {
+      // EDIT MODE: update the existing book
+      const idx = books.findIndex(x => x.id === editingId);
+      if (idx >= 0) {
+        const existing = books[idx];
+        books[idx] = {
+          ...existing,
+          title, author, genre, pages, goodreads, date, location, questions,
+          slug: NSC.slugify(title),
+          coverEmblem: existing.coverEmblem || genre,
+          ...(coverDataURL ? { cover: coverDataURL } : {})
+        };
+      }
+    } else {
+      // ADD MODE: create new book
+      const newBook = {
+        id: 'b-' + Date.now(),
+        slug: NSC.slugify(title),
+        title, author, genre, pages, date, location, goodreads,
+        ratings: { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null },
+        coverClass: 'cover-' + (1 + (books.length % 8)),
+        coverEmblem: genre,
+        questions
+      };
+      if (coverDataURL) newBook.cover = coverDataURL;
+      books.push(newBook);
+    }
+
+    NSC.saveBooks(books);
+    document.getElementById('add-modal').classList.remove('open');
+    editingId = null;
+    rerender();
+  });
+
+  rerender();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>No Shelf Control — A Book Club Since 2024</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="page">
+
+  <!-- Floating pill nav -->
+  <header class="site-header">
+    <div class="nav">
+      <a href="index.html" class="brand-logo">
+        <img src="images/logo.png" alt="No Shelf Control" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+        <span class="fallback-brand" style="display:none"><span class="script">no</span>Shelf Control</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="reads.html">Reads</a></li>
+        <li><a href="shelf.html">The Shelf</a></li>
+        <li><a href="tbr.html">TBR</a></li>
+        <li><a href="members.html">Members</a></li>
+      </ul>
+      <a href="reads.html#submit-review" class="nav-cta">Submit Review</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-frame">
+        <span class="corner bl"></span>
+        <span class="corner br"></span>
+
+        <div class="hero-logo">
+          <img src="images/logo.png" alt="No Shelf Control"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+          <div class="hero-logo-fallback" style="display:none">
+            Add your logo to <code style="font-family: monospace; color: var(--red-deep);">images/logo.png</code> and it will appear here.
+          </div>
+        </div>
+
+        <h1 class="hero-headline">
+          Reading <span class="accent">fearlessly,</span><br/>
+          arguing <span class="accent">lovingly.</span>
+        </h1>
+        <p class="hero-tag">A book club for the wonderfully obsessed — six friends, far too many tabs, and far too many books. Welcome to our shelf.</p>
+
+        <div class="hero-cta-row">
+          <a class="btn btn-light" href="reads.html"><span class="btn-icon-arrow">»</span> Explore Our Reads</a>
+          <a class="btn btn-ghost" href="shelf.html"><span class="btn-icon-arrow">»</span> The Shelf</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Current Read Featured -->
+  <section class="section-mid">
+    <div class="container">
+      <div class="section-eyebrow">Currently Reading</div>
+      <h2 class="section-title">This <span class="accent">month's</span> pick</h2>
+      <p class="section-intro">The book in everyone's bag right now. Drop by The Shelf to preview discussion questions before the meeting.</p>
+      <div id="featured-read"></div>
+    </div>
+  </section>
+
+  <!-- About / Stats -->
+  <section class="section-light">
+    <div class="container">
+      <div style="text-align: center; max-width: 760px; margin: 0 auto 3rem;">
+        <div class="section-eyebrow">About No Shelf Control</div>
+        <h2 class="section-title" style="font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.35;">
+          No Shelf Control is more than a book club — it's six friends with disagreements, snacks, and too many opinions per chapter. We read fearlessly, argue lovingly, and rate generously (or savagely, depending on the month).
+        </h2>
+        <div style="margin-top: 1.5rem;">
+          <a class="btn" href="members.html"><span class="btn-icon-arrow">»</span> Meet the Crew</a>
+        </div>
+      </div>
+
+      <div class="section-head-row" style="margin-top: 4rem;">
+        <div>
+          <div class="section-eyebrow">By the Numbers</div>
+          <h2 class="section-title">Two years of <span class="accent">reading</span> together</h2>
+        </div>
+      </div>
+      <div class="stats" id="home-stats"></div>
+    </div>
+  </section>
+
+  <!-- Highlights — numbered cards -->
+  <section class="section-dark">
+    <div class="container">
+      <div class="section-head-row">
+        <div>
+          <div class="section-eyebrow">Highlights</div>
+          <h2 class="section-title">Some <span class="accent">favorites</span><br/>(and one disaster)</h2>
+        </div>
+        <a class="btn btn-ghost" href="reads.html"><span class="btn-icon-arrow">»</span> View Projects</a>
+      </div>
+      <div class="card-grid" id="highlights-cards"></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section-mid">
+    <div class="container text-center">
+      <div class="section-eyebrow">Have Thoughts?</div>
+      <h2 class="section-title">Drop a <span class="accent">review</span></h2>
+      <p class="section-intro" style="margin-left: auto; margin-right: auto;">Whether you finished early or DNF'd at chapter three, your hot take belongs on the record.</p>
+      <a class="btn btn-light" href="reads.html#submit-review"><span class="btn-icon-arrow">»</span> Submit Your Review</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <span class="footer-script">no</span>
+      <div class="footer-brand">Shelf Control</div>
+      <p>A reading club for the wonderfully unhinged.</p>
+      <p class="est">EST · 2024</p>
+    </div>
+  </footer>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const books = NSC.loadBooks();
+
+  // Featured: nearest upcoming OR most recent
+  const now = Date.now();
+  const future = books.filter(b => new Date(b.date+'T00:00:00').getTime() >= now)
+                      .sort((a,b)=> a.date.localeCompare(b.date));
+  const featured = future[0] || books.slice().sort((a,b)=> b.date.localeCompare(a.date))[0];
+
+  const fEl = document.getElementById('featured-read');
+  if (featured) {
+    const isUp = NSC.isUpcoming(featured);
+    fEl.innerHTML = `
+      <div class="featured">
+        ${NSC.bookCoverHTML(featured)}
+        <div>
+          <div class="featured-eyebrow">${isUp ? 'Upcoming' : 'Currently Reading'} · ${NSC.formatDate(featured.date)}</div>
+          <h3 class="featured-title">${NSC.escapeHtml(featured.title)}</h3>
+          <div class="featured-author">by ${NSC.escapeHtml(featured.author)}</div>
+          <div class="featured-meta">
+            <div><strong>Genre</strong>${NSC.escapeHtml(featured.genre)}</div>
+            <div><strong>Pages</strong>${featured.pages}</div>
+            <div><strong>Goodreads</strong>${featured.goodreads}</div>
+            <div><strong>Where</strong>${NSC.escapeHtml(featured.location)}</div>
+          </div>
+          <a class="btn btn-ghost" href="shelf.html"><span class="btn-icon-arrow">»</span> Preview Questions</a>
+        </div>
+      </div>`;
+  }
+
+  // Stats — all derived live from books data
+  const totalPages = books.reduce((s,b)=> s+(b.pages||0), 0);
+  const genres = {};
+  books.forEach(b => { if (b.genre) genres[b.genre] = (genres[b.genre]||0)+1; });
+  let topGenre = '', topCount = 0;
+  Object.entries(genres).forEach(([g, c]) => { if (c > topCount) { topGenre = g; topCount = c; } });
+  const topGenrePct = books.length ? Math.round((topCount / books.length) * 100) : 0;
+  const memberCount = (NSC.MEMBERS && NSC.MEMBERS.length) || 6;
+
+  document.getElementById('home-stats').innerHTML = `
+    <div class="stat"><div class="stat-num">${books.length}</div><div class="stat-label">Books Read</div></div>
+    <div class="stat"><div class="stat-num">${totalPages.toLocaleString()}</div><div class="stat-label">Pages Conquered</div></div>
+    <div class="stat"><div class="stat-num">${memberCount}</div><div class="stat-label">Members</div></div>
+    <div class="stat"><div class="stat-num">${topGenrePct}%</div><div class="stat-label">${NSC.escapeHtml(topGenre || 'Top Genre')}${topGenre ? ' (Top Genre)' : ''}</div></div>
+  `;
+
+  // Highlights — top 3 by club avg + the lowest, computed live
+  const scored = books.map(b => ({ b, avg: NSC.avgRating(b) })).filter(o => o.avg !== null);
+  scored.sort((a,b)=> b.avg - a.avg);
+  const highlights = [scored[0], scored[1], scored[2], scored[scored.length-1]].filter(Boolean);
+  const labels = ['Highest Rated', 'Group Favorite', 'Underdog Hit', 'Most Divisive'];
+
+  document.getElementById('highlights-cards').innerHTML = highlights.map((o, i) => {
+    const b = o.b;
+    return `
+      <article class="num-card">
+        <div class="num">${String(i+1).padStart(2,'0')}</div>
+        <div class="num-title">${NSC.escapeHtml(b.title)}<br/><span class="serif-italic" style="color: var(--pink-medium); font-size: 0.85em;">${NSC.escapeHtml(b.author)}</span></div>
+        <div class="num-tags">
+          <span class="num-tag">${NSC.escapeHtml(b.genre)}</span>
+          <span class="num-tag">${b.pages} pages</span>
+          <span class="num-tag">${labels[i]}</span>
+          <span class="num-tag">★ ${o.avg.toFixed(2)}</span>
+        </div>
+        <a class="num-plus" href="shelf.html" aria-label="Open ${NSC.escapeHtml(b.title)}">+</a>
+      </article>`;
+  }).join('');
+})();
+</script>
+
+</body>
+</html>

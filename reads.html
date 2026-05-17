@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Club Reads — No Shelf Control</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="page">
+
+  <header class="site-header">
+    <div class="nav">
+      <a href="index.html" class="brand-logo">
+        <img src="images/logo.png" alt="No Shelf Control" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+        <span class="fallback-brand" style="display:none"><span class="script">no</span>Shelf Control</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="reads.html" class="active">Reads</a></li>
+        <li><a href="shelf.html">The Shelf</a></li>
+        <li><a href="tbr.html">TBR</a></li>
+        <li><a href="members.html">Members</a></li>
+      </ul>
+      <a href="reads.html#submit-review" class="nav-cta">Submit Review</a>
+    </div>
+  </header>
+
+  <section class="section-light" style="padding-top: 6rem;">
+    <div class="container">
+      <div class="section-eyebrow">The Archive</div>
+      <h1 class="section-title" style="font-size: clamp(2.5rem, 5vw, 4.25rem); margin-bottom: 1rem;">Book club <span class="accent">reads</span></h1>
+      <p class="section-intro">Every book we've cracked open since August 2024 — with the full receipts. Individual ratings, club averages, where we met, and how the world rated it on Goodreads.</p>
+
+      <div class="toolbar">
+        <div class="toolbar-title">All Reads <span style="color:var(--mauve); font-weight:400; font-family:'Playfair Display', serif; font-style:italic; font-size: 0.95rem;" id="reads-count"></span></div>
+        <button class="btn" id="add-read-btn"><span class="btn-icon-arrow">+</span> Add Next Read</button>
+      </div>
+
+      <div class="reads-table-wrap">
+        <table class="reads-table">
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Author</th>
+              <th>Genre</th>
+              <th class="center">Pages</th>
+              <th>Date</th>
+              <th>Where</th>
+              <th class="center">Goodreads Rating</th>
+              <th class="center">Joanna</th>
+              <th class="center">Kat</th>
+              <th class="center">Lexey</th>
+              <th class="center">Mazhar</th>
+              <th class="center">Meesh</th>
+              <th class="center">Zyrian</th>
+              <th class="center">Club Avg</th>
+              <th class="center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reads-tbody"></tbody>
+        </table>
+      </div>
+
+      <p class="notice">Click any cell to edit it in place. Changes save automatically. — indicates a member was absent or hadn't finished the book in time.</p>
+    </div>
+  </section>
+
+  <!-- Metrics block -->
+  <section class="section-dark">
+    <div class="container">
+      <div class="section-eyebrow">Metrics &amp; Trivia</div>
+      <h2 class="section-title">By the <span class="accent">stacks</span></h2>
+
+      <div class="stats" id="stats-grid"></div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Member Ratings vs. The Group</h3>
+          <div class="chart-sub">How each reader's personal average compares to the club average across all books they've rated.</div>
+          <div class="chart-canvas-wrap"><canvas id="ratingsChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Genre Distribution</h3>
+          <div class="chart-sub">What kinds of books we keep finding ourselves reading.</div>
+          <div class="chart-canvas-wrap"><canvas id="genreChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Submit review -->
+  <section class="section-light" id="submit-review">
+    <div class="container">
+      <div class="section-eyebrow">Your Turn</div>
+      <h2 class="section-title">Submit a <span class="accent">review</span></h2>
+      <p class="section-intro">Drop your rating for the latest read. Reviews show up next to the book once we close out the month.</p>
+
+      <form class="review-form" id="review-form" onsubmit="event.preventDefault(); alert('Thanks for the review! (Wire this up to a backend or Google Form to start collecting submissions.)'); this.reset();">
+        <div class="field-grid">
+          <div class="field">
+            <label for="reviewer">Your Name</label>
+            <select id="reviewer" required>
+              <option value="">Select…</option>
+              <option>Joanna</option>
+              <option>Katherine</option>
+              <option>Lexey</option>
+              <option>Mazhar</option>
+              <option>Michelle</option>
+              <option>Zyrian</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="book-select">Book</label>
+            <select id="book-select" required></select>
+          </div>
+          <div class="field full">
+            <label for="rating">Rating (0 – 5)</label>
+            <input id="rating" type="number" min="0" max="5" step="0.25" placeholder="4.5" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Submit Review</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Add-Read Modal -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <button class="modal-close" id="add-modal-close" aria-label="Close">×</button>
+      <h2 class="modal-title">Add the Next Read</h2>
+      <div class="modal-sub">Drop in the basics — ratings get filled in after the meeting.</div>
+
+      <form id="add-read-form">
+        <div class="field-grid">
+          <div class="field full"><label for="new-title">Book Title</label><input id="new-title" type="text" required /></div>
+          <div class="field"><label for="new-author">Author</label><input id="new-author" type="text" required /></div>
+          <div class="field"><label for="new-genre">Genre</label><input id="new-genre" type="text" placeholder="Fantasy, Romance, …" required /></div>
+          <div class="field"><label for="new-pages">Pages</label><input id="new-pages" type="number" min="1" required /></div>
+          <div class="field"><label for="new-gr">Goodreads Rating</label><input id="new-gr" type="number" min="0" max="5" step="0.01" required /></div>
+          <div class="field"><label for="new-date">Meeting Date</label><input id="new-date" type="date" required /></div>
+          <div class="field"><label for="new-location">Where</label><input id="new-location" type="text" placeholder="Federalist Pizza, Virtual…" required /></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="add-modal-cancel" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Cancel</button>
+          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Save Read</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span class="footer-script">no</span>
+      <div class="footer-brand">Shelf Control</div>
+      <p>A reading club for the wonderfully unhinged.</p>
+      <p class="est">EST · 2024</p>
+    </div>
+  </footer>
+
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const PALETTE = {
+    redDeep: '#962926', redPrimary: '#B73B36', redBright: '#C84441',
+    rose: '#C68580', mauve: '#A36868', pink: '#E8A6A0', pinkPale: '#F2C9C5',
+    blush: '#F8DDD8', charcoal: '#2B2120'
+  };
+
+  let books = NSC.loadBooks();
+
+  function rerender() {
+    books = NSC.loadBooks();
+    renderTable();
+    renderBookSelect();
+    renderStats();
+    renderCharts();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('reads-tbody');
+    // newest first
+    const sorted = books.slice().sort((a,b)=> b.date.localeCompare(a.date));
+    document.getElementById('reads-count').textContent = `· ${books.length} books`;
+
+    tbody.innerHTML = sorted.map(b => {
+      const upcoming = NSC.isUpcoming(b);
+      const avg = NSC.avgRating(b);
+      const cell = (m) => {
+        const v = b.ratings ? b.ratings[m] : null;
+        const empty = (v === null || v === undefined);
+        return empty
+          ? `<td class="rating-cell empty editable" data-id="${b.id}" data-field="ratings.${m}">—</td>`
+          : `<td class="rating-cell editable" data-id="${b.id}" data-field="ratings.${m}">${v}</td>`;
+      };
+      return `
+        <tr class="${upcoming ? 'upcoming' : ''}" data-id="${b.id}">
+          <td class="title-cell editable" data-id="${b.id}" data-field="title">${NSC.escapeHtml(b.title)}</td>
+          <td class="author-cell editable" data-id="${b.id}" data-field="author">${NSC.escapeHtml(b.author)}</td>
+          <td class="genre-cell editable" data-id="${b.id}" data-field="genre"><span class="tag tag-outline">${NSC.escapeHtml(b.genre)}</span></td>
+          <td class="pages-cell center editable" data-id="${b.id}" data-field="pages">${b.pages}</td>
+          <td class="date-cell editable" data-id="${b.id}" data-field="date">${NSC.formatDate(b.date)}</td>
+          <td class="location-cell editable" data-id="${b.id}" data-field="location">${NSC.escapeHtml(b.location)}</td>
+          <td class="gr-cell editable" data-id="${b.id}" data-field="goodreads">${b.goodreads}</td>
+          ${cell('joanna')}${cell('kat')}${cell('lexey')}${cell('mazhar')}${cell('meesh')}${cell('zyrian')}
+          <td class="avg-cell">${avg !== null ? avg.toFixed(2) : '—'}</td>
+          <td class="reads-actions-cell">
+            <button class="icon-btn danger row-delete" data-id="${b.id}" title="Delete row">×</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Wire up edit + delete
+    tbody.querySelectorAll('td.editable').forEach(td => {
+      td.addEventListener('click', () => makeReadEditable(td));
+    });
+    tbody.querySelectorAll('.row-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const b = books.find(x => x.id === id);
+        if (!b) return;
+        if (!confirm(`Delete "${b.title}" from the archive?`)) return;
+        books = books.filter(x => x.id !== id);
+        NSC.saveBooks(books);
+        rerender();
+      });
+    });
+  }
+
+  function makeReadEditable(td) {
+    if (td.dataset.editing === '1') return;
+    td.dataset.editing = '1';
+
+    const id = td.dataset.id;
+    const field = td.dataset.field;
+    const row = books.find(b => b.id === id);
+    if (!row) return;
+
+    // Resolve current value (supports "ratings.<member>" path)
+    let currentVal;
+    if (field.startsWith('ratings.')) {
+      const m = field.split('.')[1];
+      currentVal = row.ratings ? row.ratings[m] : null;
+    } else {
+      currentVal = row[field];
+    }
+
+    td.dataset.original = td.innerHTML;
+    td.textContent = (currentVal === null || currentVal === undefined) ? '' : currentVal;
+    td.setAttribute('contenteditable', 'true');
+    td.focus();
+
+    // Select all text on focus
+    const range = document.createRange();
+    range.selectNodeContents(td);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    function commit() {
+      td.setAttribute('contenteditable', 'false');
+      td.dataset.editing = '';
+      const valStr = td.textContent.trim();
+
+      if (field.startsWith('ratings.')) {
+        const m = field.split('.')[1];
+        row.ratings = row.ratings || { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null };
+        if (valStr === '' || valStr === '—' || valStr === '-') {
+          row.ratings[m] = null;
+        } else {
+          const n = parseFloat(valStr);
+          row.ratings[m] = isNaN(n) ? null : Math.max(0, Math.min(5, n));
+        }
+      } else if (field === 'pages') {
+        row[field] = parseInt(valStr, 10) || 0;
+      } else if (field === 'goodreads') {
+        const n = parseFloat(valStr);
+        row[field] = isNaN(n) ? row[field] : Math.max(0, Math.min(5, n));
+      } else if (field === 'date') {
+        // Accept ISO (yyyy-mm-dd) or human-readable ("May 19, 2026", "5/19/2026", etc.)
+        let parsed = new Date(valStr + 'T00:00:00');
+        if (isNaN(parsed.getTime())) parsed = new Date(valStr);
+        if (!isNaN(parsed.getTime())) {
+          const y = parsed.getFullYear();
+          const m = String(parsed.getMonth() + 1).padStart(2, '0');
+          const d = String(parsed.getDate()).padStart(2, '0');
+          row[field] = `${y}-${m}-${d}`;
+        } else {
+          alert('Could not parse date: ' + valStr + '\nTry formats like "May 19, 2026" or "2026-05-19".');
+        }
+      } else {
+        row[field] = valStr;
+      }
+
+      NSC.saveBooks(books);
+      rerender();
+    }
+
+    td.addEventListener('blur', commit, { once: true });
+    td.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); td.blur(); }
+      if (e.key === 'Escape') {
+        td.innerHTML = td.dataset.original;
+        td.setAttribute('contenteditable', 'false');
+        td.dataset.editing = '';
+      }
+    });
+  }
+
+  function renderBookSelect() {
+    const sel = document.getElementById('book-select');
+    sel.innerHTML = '<option value="">Select…</option>' +
+      books.slice().sort((a,b)=> b.date.localeCompare(a.date))
+        .map(b => `<option>${NSC.escapeHtml(b.title)} — ${NSC.escapeHtml(b.author)}</option>`).join('');
+  }
+
+  function renderStats() {
+    const rated = books.map(b=>({b, avg: NSC.avgRating(b)})).filter(o=>o.avg!==null);
+    rated.sort((a,b)=> b.avg-a.avg);
+    const highest = rated[0];
+    const lowest = rated[rated.length-1];
+    const totalPages = books.reduce((s,b)=> s+(b.pages||0), 0);
+    const avgPages = Math.round(totalPages / books.length);
+    const allAvg = rated.length ? rated.reduce((s,o)=> s+o.avg, 0)/rated.length : 0;
+
+    document.getElementById('stats-grid').innerHTML = `
+      <div class="stat"><div class="stat-num">${highest ? highest.avg.toFixed(2) : '—'}</div><div class="stat-label">Highest Rated<br/>${highest ? NSC.escapeHtml(highest.b.title) : ''}</div></div>
+      <div class="stat"><div class="stat-num">${lowest ? lowest.avg.toFixed(2) : '—'}</div><div class="stat-label">Lowest Rated<br/>${lowest ? NSC.escapeHtml(lowest.b.title) : ''}</div></div>
+      <div class="stat"><div class="stat-num">${avgPages}</div><div class="stat-label">Avg Pages / Book</div></div>
+      <div class="stat"><div class="stat-num">${allAvg.toFixed(2)}</div><div class="stat-label">All-Time Club Avg</div></div>
+    `;
+  }
+
+  let ratingsChart, genreChart;
+  function renderCharts() {
+    // Per-member average across all books they've rated
+    const memberAvgs = NSC.MEMBERS.map(m => {
+      const vals = books.map(b => b.ratings ? b.ratings[m] : null).filter(v => typeof v === 'number' && !isNaN(v));
+      const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+      return { m, avg, count: vals.length };
+    });
+
+    // Club average across all rated books
+    const clubAvgs = books.map(b => NSC.avgRating(b)).filter(v => v !== null);
+    const clubMean = clubAvgs.length ? clubAvgs.reduce((a,b)=>a+b,0)/clubAvgs.length : 0;
+
+    const ctx1 = document.getElementById('ratingsChart').getContext('2d');
+    if (ratingsChart) ratingsChart.destroy();
+    ratingsChart = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: memberAvgs.map(o => NSC.MEMBER_LABELS[o.m]),
+        datasets: [
+          {
+            label: 'Member Avg',
+            data: memberAvgs.map(o => Number(o.avg.toFixed(2))),
+            backgroundColor: [PALETTE.mauve, PALETTE.redPrimary, PALETTE.rose, PALETTE.redDeep, PALETTE.pink, PALETTE.charcoal],
+            borderRadius: 10,
+            barThickness: 64,
+            maxBarThickness: 80,
+            categoryPercentage: 0.95,
+            barPercentage: 0.95
+          },
+          {
+            label: 'Club Avg',
+            data: memberAvgs.map(() => Number(clubMean.toFixed(2))),
+            type: 'line',
+            borderColor: PALETTE.redBright,
+            borderDash: [6,6],
+            borderWidth: 2,
+            pointBackgroundColor: PALETTE.redBright,
+            pointRadius: 4,
+            fill: false,
+            tension: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: PALETTE.charcoal, font: { family: 'Lato', size: 12, weight: 700 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                if (ctx.dataset.label === 'Club Avg') return ` Club Avg: ${clubMean.toFixed(2)}`;
+                const m = memberAvgs[ctx.dataIndex];
+                return ` ${NSC.MEMBER_LABELS[m.m]}: ${m.avg.toFixed(2)} (${m.count} books)`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true, max: 5,
+            ticks: { color: PALETTE.mauve, font: { family: 'Lato' } },
+            grid: { color: 'rgba(166,104,104,0.15)' },
+            title: { display: true, text: 'Avg rating (0–5)', color: PALETTE.mauve, font: { family: 'Lato', weight: 700 } }
+          },
+          x: {
+            ticks: { color: PALETTE.charcoal, font: { family: 'Lato', weight: 600 } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    // Genre distribution
+    const genres = {};
+    books.forEach(b => genres[b.genre] = (genres[b.genre]||0)+1);
+    const genreLabels = Object.keys(genres);
+    const genreCounts = Object.values(genres);
+    const genreColors = [
+      PALETTE.redPrimary, PALETTE.mauve, PALETTE.rose, PALETTE.pink,
+      PALETTE.redDeep, PALETTE.pinkPale, PALETTE.charcoal, PALETTE.redBright
+    ];
+
+    const ctx2 = document.getElementById('genreChart').getContext('2d');
+    if (genreChart) genreChart.destroy();
+    genreChart = new Chart(ctx2, {
+      type: 'pie',
+      data: {
+        labels: genreLabels,
+        datasets: [{
+          data: genreCounts,
+          backgroundColor: genreColors.slice(0, genreLabels.length),
+          borderWidth: 3,
+          borderColor: PALETTE.blush
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: PALETTE.charcoal, font: { family: 'Lato', size: 12, weight: 600 }, boxWidth: 14, padding: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed/books.length)*100).toFixed(0)}%)`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Modal handlers
+  const modal = document.getElementById('add-modal');
+  document.getElementById('add-read-btn').addEventListener('click', () => modal.classList.add('open'));
+  document.getElementById('add-modal-close').addEventListener('click', () => modal.classList.remove('open'));
+  document.getElementById('add-modal-cancel').addEventListener('click', () => modal.classList.remove('open'));
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
+  document.getElementById('add-read-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('new-title').value.trim();
+    const author = document.getElementById('new-author').value.trim();
+    const genre = document.getElementById('new-genre').value.trim();
+    const pages = parseInt(document.getElementById('new-pages').value, 10);
+    const goodreads = parseFloat(document.getElementById('new-gr').value);
+    const date = document.getElementById('new-date').value;
+    const location = document.getElementById('new-location').value.trim();
+    const slug = NSC.slugify(title);
+
+    const newBook = {
+      id: 'b-' + Date.now(),
+      slug, title, author, genre, pages, date, location, goodreads,
+      ratings: { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null },
+      coverClass: 'cover-' + (1 + (books.length % 8)),
+      coverEmblem: genre,
+      questions: []
+    };
+    books.push(newBook);
+    NSC.saveBooks(books);
+    modal.classList.remove('open');
+    e.target.reset();
+    rerender();
+  });
+
+  rerender();
+})();
+</script>
+</body>
+</html>
