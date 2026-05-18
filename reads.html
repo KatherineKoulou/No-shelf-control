@@ -99,7 +99,7 @@
       <h2 class="section-title">Submit a <span class="accent">review</span></h2>
       <p class="section-intro">Drop your rating for the latest read. Reviews show up next to the book once we close out the month.</p>
 
-      <form class="review-form" id="review-form" onsubmit="event.preventDefault(); alert('Thanks for the review! (Wire this up to a backend or Google Form to start collecting submissions.)'); this.reset();">
+      <form class="review-form" id="review-form">
         <div class="field-grid">
           <div class="field">
             <label for="reviewer">Your Name</label>
@@ -122,8 +122,9 @@
             <input id="rating" type="number" min="0" max="5" step="0.25" placeholder="4.5" required />
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Submit Review</button>
+        <div class="modal-footer" style="justify-content: flex-start; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+          <button type="submit" class="btn" id="review-submit-btn"><span class="btn-icon-arrow">»</span> Submit Review</button>
+          <div id="review-result" style="font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.95rem;"></div>
         </div>
       </form>
     </div>
@@ -332,8 +333,65 @@
     const sel = document.getElementById('book-select');
     sel.innerHTML = '<option value="">Select…</option>' +
       books.slice().sort((a,b)=> b.date.localeCompare(a.date))
-        .map(b => `<option>${NSC.escapeHtml(b.title)} — ${NSC.escapeHtml(b.author)}</option>`).join('');
+        .map(b => `<option value="${NSC.escapeHtml(b.id)}">${NSC.escapeHtml(b.title)} — ${NSC.escapeHtml(b.author)}</option>`).join('');
   }
+
+  // Submit-a-Review form: writes the rating into book.ratings.<member> in Firestore.
+  const REVIEWER_TO_KEY = {
+    'Joanna': 'joanna',
+    'Katherine': 'kat',
+    'Lexey': 'lexey',
+    'Mazhar': 'mazhar',
+    'Michelle': 'meesh',
+    'Zyrian': 'zyrian'
+  };
+
+  document.getElementById('review-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reviewer = document.getElementById('reviewer').value;
+    const bookId = document.getElementById('book-select').value;
+    const rating = parseFloat(document.getElementById('rating').value);
+    const result = document.getElementById('review-result');
+    const submitBtn = document.getElementById('review-submit-btn');
+
+    const ratingsKey = REVIEWER_TO_KEY[reviewer];
+    if (!ratingsKey || !bookId || isNaN(rating)) {
+      result.textContent = 'Please fill out every field.';
+      result.style.color = 'var(--red-deep)';
+      return;
+    }
+    const clamped = Math.max(0, Math.min(5, rating));
+
+    // Always use the freshest cache (other members may have edited just now)
+    const freshBooks = NSC.loadBooks();
+    const book = freshBooks.find(b => b.id === bookId);
+    if (!book) {
+      result.textContent = 'Couldn\'t find that book — try refreshing the page.';
+      result.style.color = 'var(--red-deep)';
+      return;
+    }
+
+    book.ratings = book.ratings || { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null };
+    book.ratings[ratingsKey] = clamped;
+
+    submitBtn.disabled = true;
+    result.textContent = 'Saving…';
+    result.style.color = 'var(--mauve)';
+
+    try {
+      await NSC.saveBooks(freshBooks);
+      result.textContent = `Saved! ${reviewer} rated "${book.title}" ${clamped}/5.`;
+      result.style.color = 'var(--red-primary)';
+      e.target.reset();
+      setTimeout(() => { if (result) result.textContent = ''; }, 6000);
+    } catch (err) {
+      console.error('Review save failed:', err);
+      result.textContent = 'Could not save — check your connection and try again.';
+      result.style.color = 'var(--red-deep)';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 
   function renderStats() {
     const rated = books.map(b=>({b, avg: NSC.avgRating(b)})).filter(o=>o.avg!==null);
