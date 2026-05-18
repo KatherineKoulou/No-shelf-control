@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TBR — No Shelf Control</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-init.js"></script>
 </head>
 <body>
 <div class="page">
@@ -104,11 +107,28 @@
 
 <script src="data.js"></script>
 <script>
-(function () {
+(async function () {
+  try { await NSC.init(); }
+  catch (e) {
+    console.error(e);
+    document.querySelector('section .container').insertAdjacentHTML('beforeend',
+      '<p style="color:var(--red-deep); text-align:center; margin-top:2rem;">Could not connect to the book club database. Check your connection and refresh.</p>');
+    return;
+  }
+
   let rows = NSC.loadTbr();
   let activeFilter = 'all';
 
   function persist() { NSC.saveTbr(rows); }
+
+  // Re-render when TBR changes from any source
+  NSC.onChange((kind) => {
+    if (kind === 'tbr') {
+      rows = NSC.loadTbr();
+      renderFilters();
+      renderRows();
+    }
+  });
 
   function renderFilters() {
     const counts = {};
@@ -229,13 +249,11 @@
     }, 50);
   });
 
-  document.getElementById('reset-tbr').addEventListener('click', () => {
-    if (!confirm('Reset the TBR list to defaults? Your edits will be lost.')) return;
-    localStorage.removeItem('nsc_tbr_v1');
-    rows = NSC.loadTbr();
-    renderFilters();
-    renderRows();
-  });
+  // "Reset to Defaults" disabled in shared mode — would affect everyone in the club.
+  // If you ever want to restore the original list, edit data.js's INITIAL_TBR and
+  // wipe the `tbr` collection in the Firebase console.
+  const resetBtn = document.getElementById('reset-tbr');
+  if (resetBtn) resetBtn.style.display = 'none';
 
   renderFilters();
   renderRows();

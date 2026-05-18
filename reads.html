@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Club Reads — No Shelf Control</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-init.js"></script>
 </head>
 <body>
 <div class="page">
@@ -165,7 +168,15 @@
 <script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-(function () {
+(async function () {
+  try { await NSC.init(); }
+  catch (e) {
+    console.error(e);
+    document.querySelector('section .container').insertAdjacentHTML('beforeend',
+      '<p style="color:var(--red-deep); text-align:center; margin-top:2rem;">Could not connect to the book club database. Check your connection and refresh.</p>');
+    return;
+  }
+
   const PALETTE = {
     redDeep: '#962926', redPrimary: '#B73B36', redBright: '#C84441',
     rose: '#C68580', mauve: '#A36868', pink: '#E8A6A0', pinkPale: '#F2C9C5',
@@ -173,6 +184,9 @@
   };
 
   let books = NSC.loadBooks();
+
+  // Re-render whenever data changes (locally or from another browser)
+  NSC.onChange((kind) => { if (kind === 'books') rerender(); });
 
   function rerender() {
     books = NSC.loadBooks();

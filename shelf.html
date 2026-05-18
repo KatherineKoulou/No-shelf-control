@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Shelf — No Shelf Control</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-init.js"></script>
 </head>
 <body>
 <div class="page">
@@ -109,10 +112,21 @@
 
 <script src="data.js"></script>
 <script>
-(function () {
+(async function () {
+  try { await NSC.init(); }
+  catch (e) {
+    console.error(e);
+    document.querySelector('section .container').insertAdjacentHTML('beforeend',
+      '<p style="color:var(--blush-bg); text-align:center; margin-top:2rem;">Could not connect to the book club database. Check your connection and refresh.</p>');
+    return;
+  }
+
   let books = NSC.loadBooks();
   let coverDataURL = null; // for new book uploads
   let editingId = null;    // null = adding new, otherwise editing this book id
+
+  // Re-render when data changes from any source
+  NSC.onChange((kind) => { if (kind === 'books') rerender(); });
 
   function rerender() {
     books = NSC.loadBooks();

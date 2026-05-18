@@ -1,12 +1,23 @@
 /* =============================================================
-   No Shelf Control — Shared data layer
-   Initial book + member data, with a localStorage overlay for
-   in-browser edits (add upcoming book, add to shelf, etc).
+   No Shelf Control — Shared data layer (Firestore)
+   Books and TBR live in Firestore. Local caches stay in sync via
+   onSnapshot subscriptions, so reads are synchronous after init().
    ============================================================= */
 
 window.NSC = (function () {
-  const STORAGE_KEY = 'nsc_books_v1';
-  const TBR_KEY = 'nsc_tbr_v1';
+  // Firestore handles (populated by init())
+  let db = null;
+  let booksCol = null;
+  let tbrCol = null;
+
+  // Local caches kept in sync via onSnapshot
+  let booksCache = [];
+  let tbrCache = [];
+  let initialized = false;
+  let initPromise = null;
+
+  // Real-time change subscribers
+  let changeCallbacks = [];
 
   const MEMBERS = ['joanna', 'kat', 'lexey', 'mazhar', 'meesh', 'zyrian'];
   const MEMBER_LABELS = {
@@ -258,33 +269,108 @@ window.NSC = (function () {
     { id: 't13', title: 'Frozen River', author: 'Ariel Lawhon', genre: 'Historical Fiction / Mystery', pages: 448, goodreads: 4.39, member: 'Zyrian' }
   ];
 
-  function loadBooks() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
+  /* ---------- Firestore init + real-time subscriptions ---------- */
+  function init() {
+    if (initPromise) return initPromise;
+    initPromise = (async function () {
+      if (typeof firebase === 'undefined' || !firebase.apps.length) {
+        throw new Error('Firebase is not initialized. Make sure firebase-init.js loaded successfully.');
       }
-    } catch (e) { console.warn('Could not parse stored books', e); }
-    return JSON.parse(JSON.stringify(INITIAL_BOOKS));
+      db = firebase.firestore();
+      booksCol = db.collection('books');
+      tbrCol = db.collection('tbr');
+
+      // Seed the database the first time anyone loads the site.
+      const [booksSnap, tbrSnap] = await Promise.all([booksCol.limit(1).get(), tbrCol.limit(1).get()]);
+      if (booksSnap.empty) {
+        const batch = db.batch();
+        INITIAL_BOOKS.forEach(b => batch.set(booksCol.doc(b.id), b));
+        await batch.commit();
+      }
+      if (tbrSnap.empty) {
+        const batch = db.batch();
+        INITIAL_TBR.forEach(r => batch.set(tbrCol.doc(r.id), r));
+        await batch.commit();
+      }
+
+      // Subscribe for real-time updates. Resolve init() only after the first
+      // snapshot of each collection lands, so loadBooks/loadTbr are populated.
+      let booksReady = false;
+      let tbrReady = false;
+      await new Promise(resolve => {
+        const checkReady = () => { if (booksReady && tbrReady) resolve(); };
+        booksCol.onSnapshot(snap => {
+          booksCache = snap.docs.map(d => d.data());
+          if (!booksReady) { booksReady = true; checkReady(); }
+          else triggerChange('books');
+        }, err => console.error('books snapshot error:', err));
+        tbrCol.onSnapshot(snap => {
+          tbrCache = snap.docs.map(d => d.data());
+          if (!tbrReady) { tbrReady = true; checkReady(); }
+          else triggerChange('tbr');
+        }, err => console.error('tbr snapshot error:', err));
+      });
+
+      initialized = true;
+    })();
+    return initPromise;
   }
+
+  function triggerChange(kind) {
+    changeCallbacks.forEach(cb => { try { cb(kind); } catch (e) { console.error(e); } });
+  }
+  function onChange(cb) {
+    changeCallbacks.push(cb);
+    return function unsubscribe() {
+      changeCallbacks = changeCallbacks.filter(c => c !== cb);
+    };
+  }
+
+  /* ---------- Synchronous reads (return from cache) ---------- */
+  function loadBooks() { return booksCache.map(b => ({ ...b })); }
+  function loadTbr()   { return tbrCache.map(r => ({ ...r })); }
+
+  /* ---------- Writes (async, fire and forget for callers) ---------- */
   function saveBooks(books) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
-    catch (e) { console.warn('Could not save books', e); }
-  }
-  function loadTbr() {
-    try {
-      const stored = localStorage.getItem(TBR_KEY);
-      if (stored) return JSON.parse(stored);
-    } catch (e) { console.warn('Could not parse stored TBR', e); }
-    return JSON.parse(JSON.stringify(INITIAL_TBR));
+    if (!db) return Promise.reject(new Error('NSC not initialized — call NSC.init() first.'));
+    const newIds = new Set(books.map(b => b.id));
+    const batch = db.batch();
+    books.forEach(b => batch.set(booksCol.doc(b.id), stripUndefined(b)));
+    booksCache.forEach(b => { if (!newIds.has(b.id)) batch.delete(booksCol.doc(b.id)); });
+    return batch.commit().catch(e => { console.error('saveBooks failed:', e); throw e; });
   }
   function saveTbr(rows) {
-    try { localStorage.setItem(TBR_KEY, JSON.stringify(rows)); }
-    catch (e) { console.warn('Could not save TBR', e); }
+    if (!db) return Promise.reject(new Error('NSC not initialized — call NSC.init() first.'));
+    const newIds = new Set(rows.map(r => r.id));
+    const batch = db.batch();
+    rows.forEach(r => batch.set(tbrCol.doc(r.id), stripUndefined(r)));
+    tbrCache.forEach(r => { if (!newIds.has(r.id)) batch.delete(tbrCol.doc(r.id)); });
+    return batch.commit().catch(e => { console.error('saveTbr failed:', e); throw e; });
   }
   function resetAll() {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(TBR_KEY);
+    // Wipe everything and re-seed from INITIAL_*. Useful for testing.
+    if (!db) return Promise.reject(new Error('NSC not initialized.'));
+    const batch = db.batch();
+    booksCache.forEach(b => batch.delete(booksCol.doc(b.id)));
+    tbrCache.forEach(r => batch.delete(tbrCol.doc(r.id)));
+    INITIAL_BOOKS.forEach(b => batch.set(booksCol.doc(b.id), b));
+    INITIAL_TBR.forEach(r => batch.set(tbrCol.doc(r.id), r));
+    return batch.commit();
+  }
+
+  // Firestore rejects writes containing `undefined` — sanitize before sending.
+  function stripUndefined(obj) {
+    if (obj === null || obj === undefined) return null;
+    if (Array.isArray(obj)) return obj.map(stripUndefined);
+    if (typeof obj === 'object') {
+      const out = {};
+      Object.entries(obj).forEach(([k, v]) => {
+        if (v === undefined) return;
+        out[k] = (v !== null && typeof v === 'object') ? stripUndefined(v) : v;
+      });
+      return out;
+    }
+    return obj;
   }
 
   function avgRating(book) {
@@ -352,6 +438,7 @@ window.NSC = (function () {
 
   return {
     MEMBERS, MEMBER_LABELS,
+    init, onChange,
     loadBooks, saveBooks, loadTbr, saveTbr, resetAll,
     avgRating, coverPath, formatDate, formatMonthYear, yearOf, isUpcoming,
     bookCoverHTML, escapeHtml, slugify
