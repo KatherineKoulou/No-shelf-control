@@ -49,12 +49,12 @@
         <table class="tbr-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Author</th>
-              <th>Genre</th>
-              <th class="center">Pages</th>
-              <th class="center">Goodreads</th>
-              <th>Nominated By</th>
+              <th class="sortable" data-sort="title">Title</th>
+              <th class="sortable" data-sort="author">Author</th>
+              <th class="sortable" data-sort="genre">Genre</th>
+              <th class="sortable center" data-sort="pages">Pages</th>
+              <th class="sortable center" data-sort="goodreads">Goodreads</th>
+              <th class="sortable" data-sort="member">Nominated By</th>
               <th class="center">Actions</th>
             </tr>
           </thead>
@@ -118,8 +118,53 @@
 
   let rows = NSC.loadTbr();
   let activeFilter = 'all';
+  let sortField = null;   // e.g. 'title', 'pages'
+  let sortDir = 'asc';    // 'asc' or 'desc'
+  const NUMERIC_FIELDS = new Set(['pages', 'goodreads']);
 
   function persist() { NSC.saveTbr(rows); }
+
+  function applySorting(arr) {
+    if (!sortField) return arr;
+    const isNum = NUMERIC_FIELDS.has(sortField);
+    const sorted = arr.slice();
+    sorted.sort((a, b) => {
+      let av = a[sortField];
+      let bv = b[sortField];
+      if (av === null || av === undefined || av === '') av = isNum ? -Infinity : '';
+      if (bv === null || bv === undefined || bv === '') bv = isNum ? -Infinity : '';
+      let cmp;
+      if (isNum) cmp = Number(av) - Number(bv);
+      else cmp = String(av).toLowerCase().localeCompare(String(bv).toLowerCase());
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }
+
+  function updateSortIndicators() {
+    document.querySelectorAll('.tbr-table th.sortable').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sort === sortField) {
+        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+  }
+
+  function setupSortHandlers() {
+    document.querySelectorAll('.tbr-table th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        if (sortField === field) {
+          sortDir = (sortDir === 'asc') ? 'desc' : 'asc';
+        } else {
+          sortField = field;
+          sortDir = 'asc';
+        }
+        updateSortIndicators();
+        renderRows();
+      });
+    });
+  }
 
   // Re-render when TBR changes from any source
   NSC.onChange((kind) => {
@@ -150,7 +195,8 @@
 
   function renderRows() {
     const tbody = document.getElementById('tbr-tbody');
-    const filtered = activeFilter === 'all' ? rows : rows.filter(r => r.member === activeFilter);
+    let filtered = activeFilter === 'all' ? rows : rows.filter(r => r.member === activeFilter);
+    filtered = applySorting(filtered);
     document.getElementById('tbr-count').textContent = `· ${filtered.length} of ${rows.length}`;
 
     tbody.innerHTML = filtered.map(r => `
@@ -255,6 +301,7 @@
   const resetBtn = document.getElementById('reset-tbr');
   if (resetBtn) resetBtn.style.display = 'none';
 
+  setupSortHandlers();
   renderFilters();
   renderRows();
 

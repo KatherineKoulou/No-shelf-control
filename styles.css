@@ -1101,6 +1101,36 @@ table.reads-table { width: 100%; border-collapse: collapse; min-width: 1480px; f
   outline: 2px solid var(--red-primary); outline-offset: -2px;
   cursor: text;
 }
+/* Sortable headers */
+.tbr-table thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+  padding-right: 1.9rem;
+  position: relative;
+  transition: background 0.15s, color 0.15s;
+}
+.tbr-table thead th.sortable:hover {
+  background: var(--dark-3);
+  color: var(--white);
+}
+.tbr-table thead th.sortable::after {
+  content: '↕';
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.35;
+  font-size: 0.9em;
+  transition: opacity 0.15s;
+}
+.tbr-table thead th.sortable:hover::after { opacity: 0.65; }
+.tbr-table thead th.sortable.sort-asc::after,
+.tbr-table thead th.sortable.sort-desc::after {
+  opacity: 1;
+  color: var(--pink-medium);
+}
+.tbr-table thead th.sortable.sort-asc::after  { content: '↑'; }
+.tbr-table thead th.sortable.sort-desc::after { content: '↓'; }
 .tbr-actions-cell { text-align: right; white-space: nowrap; }
 .icon-btn {
   width: 32px; height: 32px; border-radius: 50%;
