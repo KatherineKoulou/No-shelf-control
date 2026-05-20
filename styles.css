@@ -675,19 +675,24 @@ section { padding: 5rem 0; position: relative; }
    Table
    ============================================================= */
 .reads-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 640px; /* ~10 data rows + sticky header */
   border-radius: 16px;
   border: 1px solid rgba(166,104,104,0.18);
   background: var(--cream);
   box-shadow: var(--shadow-sm);
 }
-table.reads-table { width: 100%; border-collapse: collapse; min-width: 1480px; font-size: 0.92rem; }
+table.reads-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1480px; font-size: 0.92rem; }
 .reads-table thead th {
   background: var(--dark-2); color: var(--blush-bg);
   font-family: 'Inter', sans-serif; font-weight: 600;
   text-align: left; padding: 1.15rem 1.1rem;
   font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  box-shadow: 0 2px 0 0 rgba(0,0,0,0.05);
 }
 .reads-table tbody td {
   padding: 1.05rem 1.1rem;
@@ -1319,6 +1324,214 @@ table.reads-table { width: 100%; border-collapse: collapse; min-width: 1480px; f
 .site-footer .footer-brand { font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blush-bg); margin-bottom: 0.5rem; font-size: 0.9rem; }
 .site-footer p { margin: 0.25rem 0; font-size: 0.82rem; opacity: 0.7; }
 .site-footer .est { font-size: 0.7rem; letter-spacing: 0.35em; color: var(--rose-dust); margin-top: 0.5rem; }
+
+/* =============================================================
+   Wheel filter + result actions
+   ============================================================= */
+.wheel-filter-block {
+  margin: 0 auto 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--dark-3);
+  border: 1px solid var(--dark-border);
+  border-radius: 14px;
+}
+.wheel-filter-block .wheel-filter-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--pink-medium);
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+.wheel-filter-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.wheel-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--dark-border);
+  background: rgba(232, 166, 160, 0.05);
+  color: var(--dark-text-soft);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.wheel-chip:hover { color: var(--blush-bg); border-color: var(--pink-medium); }
+.wheel-chip.active {
+  background: var(--red-primary);
+  color: var(--white);
+  border-color: var(--red-primary);
+}
+.wheel-chip .chip-count {
+  font-size: 0.68rem;
+  opacity: 0.85;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0.05em 0.5em;
+  border-radius: 999px;
+}
+
+.wheel-confirm {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+.wheel-confirm .wheel-confirm-q {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--blush-bg);
+  font-size: 1.05rem;
+  margin-bottom: 0.85rem;
+}
+.wheel-confirm .wheel-confirm-actions {
+  display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;
+}
+
+/* =============================================================
+   Members — editable answers
+   ============================================================= */
+.member-row .value.editable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background 0.15s, color 0.15s;
+}
+.member-row .value.editable:hover {
+  background: rgba(232, 166, 160, 0.1);
+  color: var(--blush-bg);
+}
+.member-row .value[contenteditable="true"] {
+  background: rgba(255, 255, 255, 0.08);
+  outline: 2px solid var(--pink-medium);
+  color: var(--blush-bg);
+  cursor: text;
+}
+.members-toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;
+}
+.members-hint {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  color: var(--dark-text-mute); font-size: 0.9rem;
+}
+
+/* =============================================================
+   Mobile polish — applies to widths ≤ 640px
+   ============================================================= */
+@media (max-width: 760px) {
+  body { font-size: 0.95rem; }
+  section { padding: 3rem 0; }
+  .hero { padding: 3rem 0 4rem; }
+  .hero-frame { padding: 2rem 1rem 2.5rem; }
+  .hero-headline { font-size: clamp(1.85rem, 8vw, 2.6rem); }
+  .hero-tag { font-size: 1rem; }
+  .section-head-row { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .toolbar { flex-direction: column; align-items: stretch; gap: 0.85rem; }
+  .toolbar .toolbar-title { font-size: 1.1rem; }
+  .toolbar > div:last-child { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .btn { padding: 0.75rem 1.2rem; font-size: 0.78rem; }
+
+  /* Sticky nav cleanup */
+  .site-header { top: 0.5rem; padding: 0 0.5rem; margin-top: 0.5rem; }
+  .nav {
+    padding: 0.55rem 0.75rem;
+    border-radius: 18px;
+    gap: 0.5rem;
+    flex-direction: column;
+  }
+  .brand-logo img { height: 32px; }
+  .nav-links { gap: 0.85rem; }
+  .nav-links a { font-size: 0.72rem; letter-spacing: 0.08em; }
+  .nav-cta { display: none; }
+
+  /* Container */
+  .container { padding: 0 1rem; }
+
+  /* Featured banner */
+  .featured { grid-template-columns: 1fr; padding: 1.5rem; gap: 1.25rem; }
+  .featured .featured-title { font-size: 1.6rem; }
+  .featured .book-cover { max-width: 150px; margin: 0 auto; }
+  .featured .featured-meta { gap: 1rem; }
+
+  /* Stats */
+  .stats { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
+  .stat { padding: 1.25rem 0.9rem; }
+  .stat-num { font-size: 2rem; }
+
+  /* Numbered cards */
+  .card-grid { gap: 1rem; }
+  .num-card { padding: 1.25rem; padding-bottom: 4rem; }
+  .num-card .num-title { font-size: 1.3rem; }
+
+  /* Reads table — smaller max-height on mobile so user sees more page */
+  .reads-table-wrap { max-height: 70vh; }
+  .reads-table thead th { padding: 0.85rem 0.7rem; font-size: 0.65rem; }
+  .reads-table tbody td { padding: 0.8rem 0.7rem; font-size: 0.85rem; }
+
+  /* Charts side by side -> stack */
+  .charts-grid { gap: 1rem; }
+  .chart-card { padding: 1.25rem; }
+  .chart-canvas-wrap { height: 280px; }
+
+  /* TBR table — make cells slightly smaller */
+  .tbr-table thead th { padding: 0.75rem 0.65rem; font-size: 0.66rem; }
+  .tbr-table tbody td { padding: 0.7rem 0.65rem; font-size: 0.85rem; }
+  .tbr-table thead th.sortable { padding-right: 1.5rem; }
+  .filter-row .tag { font-size: 0.65rem; padding: 0.18rem 0.55rem; }
+
+  /* Shelf scroll items */
+  .shelf-item { flex: 0 0 160px; }
+  .shelf-item .shelf-caption .book-title { font-size: 0.85rem; }
+  .shelf-item .shelf-caption .book-author { font-size: 0.78rem; }
+  .year-header .year { font-size: 2.2rem; }
+  .year-header .year-meta { font-size: 0.62rem; padding: 0.25rem 0.6rem; }
+
+  /* Modals on mobile */
+  .modal {
+    padding: 1.5rem 1.25rem;
+    max-height: 92vh;
+    border-radius: 16px;
+  }
+  .modal-cover-row { grid-template-columns: 1fr; gap: 1rem; }
+  .modal-cover-row .book-cover { max-width: 140px; margin: 0 auto; }
+  .modal h2.modal-title { font-size: 1.3rem; }
+  .field-grid { grid-template-columns: 1fr; }
+  .modal-footer { flex-direction: column-reverse; align-items: stretch; }
+  .modal-footer .btn { justify-content: center; }
+
+  /* Wheel sized for small screens */
+  .wheel-container { max-width: 100%; }
+  .wheel-cta-block { padding: 1.75rem 1.25rem; }
+  .wheel-cta-block h2 { font-size: 1.4rem; }
+  .wheel-confirm .wheel-confirm-actions .btn { flex: 1; min-width: 0; }
+
+  /* Members */
+  .member-grid { gap: 1rem; grid-template-columns: 1fr; }
+  .member-card { padding: 1.5rem 1.25rem 1.25rem; }
+  .member-row { grid-template-columns: 110px 1fr; padding: 0.45rem 0; font-size: 0.82rem; }
+  .member-row .label { font-size: 0.58rem; }
+  .member-avatar { width: 64px; height: 64px; font-size: 1.7rem; }
+  .member-name { font-size: 1.4rem; }
+
+  /* Submit Review form */
+  .review-form { padding: 1.5rem 1.25rem; }
+  .review-form .modal-footer { flex-direction: column; align-items: stretch; }
+  .review-form #review-result { text-align: center; }
+
+  /* Hero CTAs stack */
+  .hero-cta-row { flex-direction: column; gap: 0.6rem; }
+  .hero-cta-row .btn { justify-content: center; width: 100%; }
+
+  /* Footer */
+  .site-footer { padding: 2rem 0 1.5rem; }
+}
+
+@media (max-width: 420px) {
+  .nav-links a { font-size: 0.66rem; letter-spacing: 0.05em; }
+  .member-row { grid-template-columns: 1fr; gap: 0.15rem; padding: 0.5rem 0; }
+  .member-row .label { padding-top: 0; }
+  .section-eyebrow { font-size: 0.65rem; }
+}
 
 /* =============================================================
    Utility

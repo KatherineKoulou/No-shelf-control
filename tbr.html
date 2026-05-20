@@ -80,14 +80,26 @@
       <h2 class="modal-title">Spin the <span class="accent">wheel</span></h2>
       <div class="modal-sub">Let the universe (and a little JavaScript) pick the next book.</div>
 
+      <div class="wheel-filter-block">
+        <div class="wheel-filter-label">Include nominations from:</div>
+        <div class="wheel-filter-chips" id="wheel-filter-chips"></div>
+      </div>
+
       <div class="wheel-container">
         <div class="wheel-pointer"></div>
         <canvas id="wheel-canvas"></canvas>
       </div>
 
       <div class="wheel-result" id="wheel-result"></div>
+      <div class="wheel-confirm" id="wheel-confirm" style="display:none;">
+        <div class="wheel-confirm-q">Make this the next No Shelf Control read?</div>
+        <div class="wheel-confirm-actions">
+          <button class="btn btn-ghost" id="confirm-no" style="color: var(--blush-bg); border-color: var(--dark-border);">No, spin again</button>
+          <button class="btn btn-light" id="confirm-yes"><span class="btn-icon-arrow">»</span> Yes, set as next read</button>
+        </div>
+      </div>
 
-      <div class="modal-footer" style="justify-content: center;">
+      <div class="modal-footer" style="justify-content: center;" id="wheel-actions">
         <button class="btn btn-ghost" id="wheel-cancel" style="color: var(--blush-bg); border-color: var(--dark-border);">Close</button>
         <button class="btn btn-light" id="spin-btn"><span class="btn-icon-arrow">↻</span> Spin</button>
       </div>
@@ -316,6 +328,8 @@
   let wheelRotation = 0;
   let wheelCanvas, wheelCtx;
   let isSpinning = false;
+  let wheelEnabledMembers = new Set(); // active nominator filter
+  let lastWinner = null;                // book object after a spin
 
   function setupWheelCanvas() {
     wheelCanvas = document.getElementById('wheel-canvas');
@@ -399,16 +413,59 @@
   }
 
   function openWheel() {
-    wheelItems = rows.slice();
-    if (!wheelItems.length) { alert('Add some books to the TBR list first!'); return; }
+    if (!rows.length) { alert('Add some books to the TBR list first!'); return; }
+
+    // Initialize the nominator filter to "all selected"
+    const members = [...new Set(rows.map(r => r.member))].sort();
+    wheelEnabledMembers = new Set(members);
+    renderWheelFilterChips(members);
+
+    refreshWheelItems();
     wheelRotation = 0;
+    lastWinner = null;
+
     document.getElementById('wheel-result').classList.remove('show');
     document.getElementById('wheel-result').innerHTML = '';
+    document.getElementById('wheel-confirm').style.display = 'none';
+    document.getElementById('wheel-actions').style.display = '';
     document.getElementById('wheel-modal').classList.add('open');
+
     setTimeout(() => {
       setupWheelCanvas();
       drawWheel(wheelRotation);
     }, 60);
+  }
+
+  function refreshWheelItems() {
+    wheelItems = rows.filter(r => wheelEnabledMembers.has(r.member));
+  }
+
+  function renderWheelFilterChips(members) {
+    const counts = {};
+    rows.forEach(r => counts[r.member] = (counts[r.member] || 0) + 1);
+    const container = document.getElementById('wheel-filter-chips');
+    container.innerHTML = members.map(m => {
+      const isActive = wheelEnabledMembers.has(m);
+      return `<button type="button" class="wheel-chip ${isActive ? 'active' : ''}" data-member="${NSC.escapeHtml(m)}">${NSC.escapeHtml(m)}<span class="chip-count">${counts[m]}</span></button>`;
+    }).join('');
+
+    container.querySelectorAll('.wheel-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const m = chip.dataset.member;
+        if (wheelEnabledMembers.has(m)) wheelEnabledMembers.delete(m);
+        else wheelEnabledMembers.add(m);
+        chip.classList.toggle('active');
+        refreshWheelItems();
+        wheelRotation = 0;
+        drawWheel(0);
+        // Clear any previous winner state when filter changes
+        document.getElementById('wheel-result').classList.remove('show');
+        document.getElementById('wheel-result').innerHTML = '';
+        document.getElementById('wheel-confirm').style.display = 'none';
+        document.getElementById('wheel-actions').style.display = '';
+        lastWinner = null;
+      });
+    });
   }
 
   function closeWheel() {
@@ -416,10 +473,14 @@
   }
 
   function spinTheWheel() {
-    if (isSpinning || !wheelItems.length) return;
+    if (isSpinning || !wheelItems.length) {
+      if (!wheelItems.length) alert('Pick at least one nominator above to spin.');
+      return;
+    }
     isSpinning = true;
     document.getElementById('spin-btn').disabled = true;
     document.getElementById('wheel-result').classList.remove('show');
+    document.getElementById('wheel-confirm').style.display = 'none';
 
     const n = wheelItems.length;
     const sliceAngle = (2 * Math.PI) / n;
@@ -462,14 +523,90 @@
 
   function showWinner(idx) {
     const w = wheelItems[idx];
+    lastWinner = w;
     document.getElementById('wheel-result').innerHTML = `
-      <div class="winner-label">Next Read</div>
+      <div class="winner-label">The Wheel Says</div>
       <div class="winner-title">${NSC.escapeHtml(w.title)}</div>
       <div class="winner-author">by ${NSC.escapeHtml(w.author)} · nominated by ${NSC.escapeHtml(w.member)}</div>
     `;
     requestAnimationFrame(() => {
       document.getElementById('wheel-result').classList.add('show');
+      // Show Yes/No confirmation, hide normal action row
+      document.getElementById('wheel-confirm').style.display = '';
+      document.getElementById('wheel-actions').style.display = 'none';
     });
+  }
+
+  function isoOneMonthFromToday() {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  async function confirmYes() {
+    if (!lastWinner) return;
+    const w = lastWinner;
+    const confirmYesBtn = document.getElementById('confirm-yes');
+    const confirmNoBtn = document.getElementById('confirm-no');
+    confirmYesBtn.disabled = true;
+    confirmNoBtn.disabled = true;
+    confirmYesBtn.innerHTML = 'Saving…';
+
+    try {
+      // 1) Add to the books collection as the next read
+      const freshBooks = NSC.loadBooks();
+      const newBook = {
+        id: 'b-' + Date.now(),
+        slug: NSC.slugify(w.title),
+        title: w.title,
+        author: w.author,
+        genre: w.genre,
+        pages: w.pages,
+        date: isoOneMonthFromToday(),
+        location: 'TBD',
+        goodreads: w.goodreads,
+        ratings: { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null },
+        coverClass: 'cover-' + (1 + (freshBooks.length % 8)),
+        coverEmblem: w.genre || 'Next Read',
+        questions: []
+      };
+      freshBooks.push(newBook);
+      await NSC.saveBooks(freshBooks);
+
+      // 2) Remove the chosen book from the TBR list
+      const freshTbr = NSC.loadTbr().filter(r => r.id !== w.id);
+      await NSC.saveTbr(freshTbr);
+
+      // 3) Confirmation + close
+      document.getElementById('wheel-confirm').innerHTML = `
+        <div class="wheel-confirm-q" style="color: var(--pink-medium);">
+          Locked in! <strong>${NSC.escapeHtml(w.title)}</strong> is the next read.
+        </div>
+        <p style="color: var(--dark-text-soft); font-size: 0.88rem; margin: 0;">
+          Added to the All Reads table with a placeholder date and location — edit those when you have them confirmed.
+        </p>
+      `;
+      setTimeout(() => {
+        document.getElementById('wheel-modal').classList.remove('open');
+      }, 2500);
+    } catch (e) {
+      console.error('Could not set next read:', e);
+      confirmYesBtn.disabled = false;
+      confirmNoBtn.disabled = false;
+      confirmYesBtn.innerHTML = '<span class="btn-icon-arrow">»</span> Yes, set as next read';
+      alert('Could not save — check your connection and try again.');
+    }
+  }
+
+  function confirmNo() {
+    document.getElementById('wheel-confirm').style.display = 'none';
+    document.getElementById('wheel-actions').style.display = '';
+    document.getElementById('wheel-result').classList.remove('show');
+    document.getElementById('wheel-result').innerHTML = '';
+    lastWinner = null;
   }
 
   document.getElementById('open-wheel').addEventListener('click', openWheel);
@@ -477,6 +614,8 @@
   document.getElementById('wheel-cancel').addEventListener('click', closeWheel);
   document.getElementById('wheel-modal').addEventListener('click', (e) => { if (e.target.id === 'wheel-modal') closeWheel(); });
   document.getElementById('spin-btn').addEventListener('click', spinTheWheel);
+  document.getElementById('confirm-yes').addEventListener('click', confirmYes);
+  document.getElementById('confirm-no').addEventListener('click', confirmNo);
 })();
 </script>
 </body>

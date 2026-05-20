@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Members — No Shelf Control</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-init.js"></script>
 </head>
 <body>
 <div class="page">
@@ -30,127 +33,13 @@
     <div class="container">
       <div class="section-eyebrow">The Roster</div>
       <h1 class="section-title" style="font-size: clamp(2.5rem, 5vw, 4.25rem); margin-bottom: 1rem;">The <span class="accent">members</span></h1>
-      <p class="section-intro">Six readers, six wildly different tastes. Hover, read, judge gently.</p>
+      <p class="section-intro">Six readers, six wildly different tastes. Click any answer to edit it — changes save automatically and sync to everyone in the club.</p>
 
-      <div class="member-grid">
-
-        <!-- Joanna -->
-        <article class="member-card theme-2">
-          <div class="member-avatar">J</div>
-          <div class="member-name">Joanna</div>
-          <div class="member-handle">Mystery devotee · Audiobook loyalist</div>
-
-          <div class="member-row"><div class="label">Fave Book</div><div class="value">Anne of Green Gables</div></div>
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Harry Potter, Artemis Fowl</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">Mystery, Psychological Thriller</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Horror</div></div>
-          <div class="member-row"><div class="label">TBR Longest</div><div class="value">All The Light We Cannot See</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Paperback · Audiobook<br/><span style="font-size:0.8rem; color:var(--mauve); font-style: italic;">"would prefer physical book if I had the attention span 🙃"</span></div></div>
-        </article>
-
-        <!-- Katherine -->
-        <article class="member-card theme-1">
-          <div class="member-avatar">K</div>
-          <div class="member-name">Katherine</div>
-          <div class="member-handle">"Kat" · Sci-fi soul · Paper purist</div>
-
-          <div class="member-row"><div class="label">Fave Book</div><div class="value">Ender's Game</div></div>
-          <div class="member-row"><div class="label">Worst Ever</div><div class="value">The Spanish Love Deception</div></div>
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Percy Jackson &amp; the Olympians</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">Science Fiction</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Romance</div></div>
-          <div class="member-row"><div class="label">Fave Author</div><div class="value">R. F. Kuang, Octavia E. Butler</div></div>
-          <div class="member-row"><div class="label">Fave Trope</div><div class="value">Slow Burn, Forced Proximity</div></div>
-          <div class="member-row"><div class="label">Least Trope</div><div class="value">Fake Dating</div></div>
-          <div class="member-row"><div class="label">Inspiring</div><div class="value">Lauren Olamina</div></div>
-          <div class="member-row"><div class="label">TBR Longest</div><div class="value">A Little Life</div></div>
-          <div class="member-row"><div class="label">Wish: Movie</div><div class="value">Project Hail Mary</div></div>
-          <div class="member-row"><div class="label">Wish: TV</div><div class="value">Dungeon Crawler Carl</div></div>
-          <div class="member-row"><div class="label">Best Adapt.</div><div class="value">Ready Player One</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Paperback · Physical Book</div></div>
-        </article>
-
-        <!-- Lexey -->
-        <article class="member-card theme-3">
-          <div class="member-avatar">L</div>
-          <div class="member-name">Lexey</div>
-          <div class="member-handle">Sapphic smut SME · Will fight for Aelin</div>
-
-          <div class="member-row"><div class="label">Fave Book</div><div class="value">Those Who Wait</div></div>
-          <div class="member-row"><div class="label">Worst Ever</div><div class="value">Engineering Design</div></div>
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Fifty Shades, LMAO</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">Sapphic Smut :)</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Horror</div></div>
-          <div class="member-row"><div class="label">Fave Author</div><div class="value">Haley Cass</div></div>
-          <div class="member-row"><div class="label">Fave Trope</div><div class="value">Enemies to Lovers</div></div>
-          <div class="member-row"><div class="label">Least Trope</div><div class="value">Second Chance / Pregnancy</div></div>
-          <div class="member-row"><div class="label">Inspiring</div><div class="value">Aelin Ashryver W. Galathynius</div></div>
-          <div class="member-row"><div class="label">TBR Longest</div><div class="value">Red Queen Series</div></div>
-          <div class="member-row"><div class="label">Wish: Movie</div><div class="value">The Women</div></div>
-          <div class="member-row"><div class="label">Wish: TV</div><div class="value">TOG Series</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Paperback · Kindle, Audiobook</div></div>
-        </article>
-
-        <!-- Mazhar -->
-        <article class="member-card theme-4">
-          <div class="member-avatar">M</div>
-          <div class="member-name">Mazhar</div>
-          <div class="member-handle">"Maz" · Tolkien defender · Hardcover only</div>
-
-          <div class="member-row"><div class="label">Fave Book</div><div class="value">A Storm of Swords / LOTR</div></div>
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Percy Jackson</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">Epic Fantasy</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Romance / Self Help</div></div>
-          <div class="member-row"><div class="label">Fave Author</div><div class="value">Tolkien</div></div>
-          <div class="member-row"><div class="label">Least Trope</div><div class="value">Resurrection / Fake Death</div></div>
-          <div class="member-row"><div class="label">TBR Longest</div><div class="value">Crime and Punishment</div></div>
-          <div class="member-row"><div class="label">Wish: Movie</div><div class="value">Path of Destruction</div></div>
-          <div class="member-row"><div class="label">Wish: TV</div><div class="value">Worm</div></div>
-          <div class="member-row"><div class="label">Best Adapt.</div><div class="value">LOTR / The Expanse</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Hardcover · Kindle</div></div>
-        </article>
-
-        <!-- Michelle -->
-        <article class="member-card theme-5">
-          <div class="member-avatar">M</div>
-          <div class="member-name">Michelle</div>
-          <div class="member-handle">"Meesh" · Sanderson disciple · Kaladin apologist</div>
-
-          <div class="member-row"><div class="label">Fave Book</div><div class="value">Words of Radiance</div></div>
-          <div class="member-row"><div class="label">Worst Ever</div><div class="value">Lightlark</div></div>
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Harry Potter</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">High / Epic Fantasy</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Self Help</div></div>
-          <div class="member-row"><div class="label">Fave Author</div><div class="value">Brandon Sanderson</div></div>
-          <div class="member-row"><div class="label">Fave Trope</div><div class="value">(Slow Burn) Enemies to Lovers</div></div>
-          <div class="member-row"><div class="label">Least Trope</div><div class="value">Fated Mates</div></div>
-          <div class="member-row"><div class="label">In Love With</div><div class="value">Kaladin Stormblessed &lt;3</div></div>
-          <div class="member-row"><div class="label">Inspiring</div><div class="value">(maybe) Shallan Davar</div></div>
-          <div class="member-row"><div class="label">Wish: Movie</div><div class="value">Mistborn</div></div>
-          <div class="member-row"><div class="label">Wish: TV</div><div class="value">Stormlight Archives or Greenbone Saga</div></div>
-          <div class="member-row"><div class="label">Best Adapt.</div><div class="value">LOTR or Fight Club</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Hardcover · Kindle</div></div>
-        </article>
-
-        <!-- Zyrian -->
-        <article class="member-card theme-6">
-          <div class="member-avatar">Z</div>
-          <div class="member-name">Zyrian</div>
-          <div class="member-handle">Mystery seeker · Kindle convert (no book space)</div>
-
-          <div class="member-row"><div class="label">YA Series</div><div class="value">Percy Jackson / Artemis Fowl</div></div>
-          <div class="member-row"><div class="label">Fave Genre</div><div class="value">Mystery / Fantasy</div></div>
-          <div class="member-row"><div class="label">Least Fave</div><div class="value">Nonfiction</div></div>
-          <div class="member-row"><div class="label">Least Trope</div><div class="value">Fake Dating / Second Chance</div></div>
-          <div class="member-row"><div class="label">Inspiring</div><div class="value">Count Alexander Ilyich Rostov</div></div>
-          <div class="member-row"><div class="label">TBR Longest</div><div class="value">Game of Thrones</div></div>
-          <div class="member-row"><div class="label">Wish: Movie</div><div class="value">House of Leaves</div></div>
-          <div class="member-row"><div class="label">Wish: TV</div><div class="value">TOG</div></div>
-          <div class="member-row"><div class="label">Best Adapt.</div><div class="value">Fight Club / Fantastic Mr. Fox</div></div>
-          <div class="member-row"><div class="label">Format</div><div class="value">Paperback · Kindle (no book space)</div></div>
-        </article>
-
+      <div class="members-toolbar">
+        <div class="members-hint">Click an answer to edit. Press Enter to save, Esc to cancel.</div>
       </div>
+
+      <div class="member-grid" id="member-grid"></div>
     </div>
   </section>
 
@@ -161,12 +50,7 @@
       <h2 class="section-title">Patterns of the <span class="accent">pack</span></h2>
       <p class="section-intro">A few things this group has in common (and where they don't).</p>
 
-      <div class="stats">
-        <div class="stat"><div class="stat-num">4 of 6</div><div class="stat-label">Read on Kindle</div></div>
-        <div class="stat"><div class="stat-num">3</div><div class="stat-label">Percy Jackson Kids</div></div>
-        <div class="stat"><div class="stat-num">4 of 6</div><div class="stat-label">Team Paperback</div></div>
-        <div class="stat"><div class="stat-num">3</div><div class="stat-label">List Romance as Least Fave</div></div>
-      </div>
+      <div class="stats" id="member-stats"></div>
     </div>
   </section>
 
@@ -180,5 +64,146 @@
   </footer>
 
 </div>
+
+<script src="data.js"></script>
+<script>
+(async function () {
+  try { await NSC.init(); }
+  catch (e) {
+    console.error(e);
+    document.querySelector('section .container').insertAdjacentHTML('beforeend',
+      '<p style="color:var(--blush-bg); text-align:center; margin-top:2rem;">Could not connect to the book club database. Check your connection and refresh.</p>');
+    return;
+  }
+
+  let members = NSC.loadMembers();
+  const QUESTIONS = NSC.memberQuestions();
+
+  // Re-render when members change from any source
+  NSC.onChange((kind) => {
+    if (kind === 'members') {
+      members = NSC.loadMembers();
+      renderMembers();
+      renderStats();
+    }
+  });
+
+  function renderMembers() {
+    const grid = document.getElementById('member-grid');
+    // Sort consistently (alphabetical by name) so order is stable
+    const ordered = members.slice().sort((a, b) => a.name.localeCompare(b.name));
+    grid.innerHTML = ordered.map(m => {
+      const answers = m.answers || {};
+      const rows = QUESTIONS.map(q => {
+        const val = answers[q.key];
+        const isEmpty = !val;
+        const display = isEmpty ? '— add answer —' : NSC.escapeHtml(val);
+        return `
+          <div class="member-row">
+            <div class="label">${NSC.escapeHtml(q.label)}</div>
+            <div class="value editable ${isEmpty ? 'empty' : ''}" data-member-id="${m.id}" data-field="${q.key}">${display}</div>
+          </div>
+        `;
+      }).join('');
+      return `
+        <article class="member-card ${NSC.escapeHtml(m.themeClass || 'theme-1')}">
+          <div class="member-avatar">${NSC.escapeHtml(m.avatar || (m.name || '?').charAt(0))}</div>
+          <div class="member-name">${NSC.escapeHtml(m.name)}</div>
+          <div class="member-handle">${NSC.escapeHtml(m.handle || '')}</div>
+          ${rows}
+        </article>
+      `;
+    }).join('');
+
+    // Wire up click-to-edit on each value cell
+    grid.querySelectorAll('.value.editable').forEach(cell => {
+      cell.addEventListener('click', () => makeAnswerEditable(cell));
+    });
+  }
+
+  function makeAnswerEditable(cell) {
+    if (cell.dataset.editing === '1') return;
+    cell.dataset.editing = '1';
+    cell.dataset.original = cell.innerHTML;
+
+    const memberId = cell.dataset.memberId;
+    const field = cell.dataset.field;
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+
+    const currentVal = (member.answers && member.answers[field]) || '';
+    cell.classList.remove('empty');
+    cell.textContent = currentVal;
+    cell.setAttribute('contenteditable', 'true');
+    cell.focus();
+
+    // Select all
+    const range = document.createRange();
+    range.selectNodeContents(cell);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    async function commit() {
+      cell.setAttribute('contenteditable', 'false');
+      cell.dataset.editing = '';
+      const newVal = cell.textContent.trim();
+
+      // Only save if changed
+      const oldVal = (member.answers && member.answers[field]) || '';
+      if (newVal === oldVal) {
+        // No change — re-render this cell to restore "— add answer —" placeholder if needed
+        renderMembers();
+        return;
+      }
+
+      member.answers = { ...(member.answers || {}), [field]: newVal };
+      try {
+        await NSC.saveMember(member);
+        // onSnapshot will fire and re-render
+      } catch (err) {
+        console.error('Failed to save member answer:', err);
+        cell.innerHTML = cell.dataset.original;
+        alert('Could not save — check your connection and try again.');
+      }
+    }
+
+    cell.addEventListener('blur', commit, { once: true });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); cell.blur(); }
+      if (e.key === 'Escape') {
+        cell.innerHTML = cell.dataset.original;
+        cell.setAttribute('contenteditable', 'false');
+        cell.dataset.editing = '';
+      }
+    });
+  }
+
+  function renderStats() {
+    // Compute live trivia from member answers
+    const total = members.length || 1;
+    const count = (key, predicate) => members.filter(m => {
+      const v = (m.answers && m.answers[key]) || '';
+      return predicate(v.toLowerCase());
+    }).length;
+
+    const kindle = count('readingFormat', v => v.includes('kindle'));
+    const paperback = count('hardcoverPaperback', v => v.includes('paperback'));
+    const percyJackson = count('yaSeries', v => v.includes('percy'));
+    const romanceLeast = count('leastFavoriteGenre', v => v.includes('romance'));
+
+    document.getElementById('member-stats').innerHTML = `
+      <div class="stat"><div class="stat-num">${kindle} of ${total}</div><div class="stat-label">Read on Kindle</div></div>
+      <div class="stat"><div class="stat-num">${percyJackson}</div><div class="stat-label">Percy Jackson Kids</div></div>
+      <div class="stat"><div class="stat-num">${paperback} of ${total}</div><div class="stat-label">Team Paperback</div></div>
+      <div class="stat"><div class="stat-num">${romanceLeast}</div><div class="stat-label">List Romance as Least Fave</div></div>
+    `;
+  }
+
+  renderMembers();
+  renderStats();
+})();
+</script>
+
 </body>
 </html>

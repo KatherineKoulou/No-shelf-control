@@ -9,10 +9,12 @@ window.NSC = (function () {
   let db = null;
   let booksCol = null;
   let tbrCol = null;
+  let membersCol = null;
 
   // Local caches kept in sync via onSnapshot
   let booksCache = [];
   let tbrCache = [];
+  let membersCache = [];
   let initialized = false;
   let initPromise = null;
 
@@ -269,6 +271,139 @@ window.NSC = (function () {
     { id: 't13', title: 'Frozen River', author: 'Ariel Lawhon', genre: 'Historical Fiction / Mystery', pages: 448, goodreads: 4.39, member: 'Zyrian' }
   ];
 
+  // Ordered list of member-info questions shown on the Members page.
+  // Each entry: { key, label, placeholder }
+  const MEMBER_QUESTIONS = [
+    { key: 'favoriteBook',         label: 'Favorite Book' },
+    { key: 'worstBook',            label: 'Worst Book Ever Read' },
+    { key: 'yaSeries',             label: 'Favorite YA Series Growing Up' },
+    { key: 'favoriteGenre',        label: 'Favorite Genre' },
+    { key: 'leastFavoriteGenre',   label: 'Least Favorite Genre' },
+    { key: 'favoriteAuthor',       label: 'Favorite Author' },
+    { key: 'favoriteTrope',        label: 'Favorite Trope' },
+    { key: 'leastFavoriteTrope',   label: 'Least Favorite Trope' },
+    { key: 'inLoveWith',           label: "Fictional Character You're In Love With" },
+    { key: 'mostInspiring',        label: 'Most Inspiring Character' },
+    { key: 'longestTbr',           label: 'Book That Has Been on Your TBR the Longest' },
+    { key: 'wishMovie',            label: 'Book You Wish Was a Movie' },
+    { key: 'wishTv',               label: 'Book You Wish Was a TV Show' },
+    { key: 'bestAdaptation',       label: 'Best Book to TV/Movie Adaptation' },
+    { key: 'hardcoverPaperback',   label: 'Hardcover or Paperback' },
+    { key: 'readingFormat',        label: 'Preferred Reading Format' },
+    { key: 'favoriteInfluencer',   label: 'Favorite Book Influencer' }
+  ];
+
+  const INITIAL_MEMBERS = [
+    {
+      id: 'joanna', name: 'Joanna', avatar: 'J', themeClass: 'theme-2',
+      handle: 'Mystery devotee · Audiobook loyalist',
+      answers: {
+        favoriteBook: 'Anne of Green Gables', worstBook: '',
+        yaSeries: 'Harry Potter, Artemis Fowl',
+        favoriteGenre: 'Mystery, Psychological Thriller',
+        leastFavoriteGenre: 'Horror', favoriteAuthor: '',
+        favoriteTrope: '', leastFavoriteTrope: '',
+        inLoveWith: '', mostInspiring: '',
+        longestTbr: 'All The Light We Cannot See',
+        wishMovie: '', wishTv: '', bestAdaptation: '',
+        hardcoverPaperback: 'Paperback',
+        readingFormat: 'Audiobook (would prefer physical book if I had the attention span 🙃)',
+        favoriteInfluencer: ''
+      }
+    },
+    {
+      id: 'kat', name: 'Katherine', avatar: 'K', themeClass: 'theme-1',
+      handle: '"Kat" · Sci-fi soul · Paper purist',
+      answers: {
+        favoriteBook: "Ender's Game", worstBook: 'The Spanish Love Deception',
+        yaSeries: 'Percy Jackson & the Olympians',
+        favoriteGenre: 'Science Fiction', leastFavoriteGenre: 'Romance',
+        favoriteAuthor: 'R. F. Kuang, Octavia E. Butler',
+        favoriteTrope: 'Slow Burn, Forced Proximity',
+        leastFavoriteTrope: 'Fake Dating',
+        inLoveWith: '', mostInspiring: 'Lauren Olamina',
+        longestTbr: 'A Little Life',
+        wishMovie: 'Project Hail Mary',
+        wishTv: 'Dungeon Crawler Carl',
+        bestAdaptation: 'Ready Player One',
+        hardcoverPaperback: 'Paperback', readingFormat: 'Physical Book',
+        favoriteInfluencer: ''
+      }
+    },
+    {
+      id: 'lexey', name: 'Lexey', avatar: 'L', themeClass: 'theme-3',
+      handle: 'Sapphic smut SME · Will fight for Aelin',
+      answers: {
+        favoriteBook: 'Those Who Wait', worstBook: 'Engineering Design',
+        yaSeries: 'Fifty Shades, LMAO',
+        favoriteGenre: 'Sapphic Smut :)', leastFavoriteGenre: 'Horror',
+        favoriteAuthor: 'Haley Cass',
+        favoriteTrope: 'Enemies to Lovers',
+        leastFavoriteTrope: 'Second Chance / Pregnancy',
+        inLoveWith: '', mostInspiring: 'Aelin Ashryver W. Galathynius',
+        longestTbr: 'Red Queen Series',
+        wishMovie: 'The Women', wishTv: 'TOG Series',
+        bestAdaptation: '',
+        hardcoverPaperback: 'Paperback', readingFormat: 'Kindle, Audiobook',
+        favoriteInfluencer: ''
+      }
+    },
+    {
+      id: 'mazhar', name: 'Mazhar', avatar: 'M', themeClass: 'theme-4',
+      handle: '"Maz" · Tolkien defender · Hardcover only',
+      answers: {
+        favoriteBook: 'A Storm of Swords / LOTR', worstBook: '',
+        yaSeries: 'Percy Jackson',
+        favoriteGenre: 'Epic Fantasy', leastFavoriteGenre: 'Romance / Self Help',
+        favoriteAuthor: 'Tolkien',
+        favoriteTrope: '', leastFavoriteTrope: 'Resurrection / Fake Death',
+        inLoveWith: '', mostInspiring: '',
+        longestTbr: 'Crime and Punishment',
+        wishMovie: 'Path of Destruction', wishTv: 'Worm',
+        bestAdaptation: 'LOTR / The Expanse',
+        hardcoverPaperback: 'Hardcover', readingFormat: 'Kindle',
+        favoriteInfluencer: ''
+      }
+    },
+    {
+      id: 'meesh', name: 'Michelle', avatar: 'M', themeClass: 'theme-5',
+      handle: '"Meesh" · Sanderson disciple · Kaladin apologist',
+      answers: {
+        favoriteBook: 'Words of Radiance', worstBook: 'Lightlark',
+        yaSeries: 'Harry Potter',
+        favoriteGenre: 'High / Epic Fantasy', leastFavoriteGenre: 'Self Help',
+        favoriteAuthor: 'Brandon Sanderson',
+        favoriteTrope: '(Slow Burn) Enemies to Lovers',
+        leastFavoriteTrope: 'Fated Mates',
+        inLoveWith: 'Kaladin Stormblessed <3',
+        mostInspiring: '(maybe) Shallan Davar',
+        longestTbr: '',
+        wishMovie: 'Mistborn',
+        wishTv: 'Stormlight Archives or Greenbone Saga',
+        bestAdaptation: 'LOTR or Fight Club',
+        hardcoverPaperback: 'Hardcover', readingFormat: 'Kindle',
+        favoriteInfluencer: ''
+      }
+    },
+    {
+      id: 'zyrian', name: 'Zyrian', avatar: 'Z', themeClass: 'theme-6',
+      handle: 'Mystery seeker · Kindle convert (no book space)',
+      answers: {
+        favoriteBook: '', worstBook: '',
+        yaSeries: 'Percy Jackson / Artemis Fowl',
+        favoriteGenre: 'Mystery / Fantasy', leastFavoriteGenre: 'Nonfiction',
+        favoriteAuthor: '',
+        favoriteTrope: '', leastFavoriteTrope: 'Fake Dating / Second Chance',
+        inLoveWith: '', mostInspiring: 'Count Alexander Ilyich Rostov',
+        longestTbr: 'Game of Thrones',
+        wishMovie: 'House of Leaves', wishTv: 'TOG',
+        bestAdaptation: 'Fight Club / Fantastic Mr. Fox',
+        hardcoverPaperback: 'Paperback', readingFormat: 'Kindle (no book space)',
+        favoriteInfluencer: ''
+      }
+    }
+  ];
+
   /* ---------- Firestore init + real-time subscriptions ---------- */
   function init() {
     if (initPromise) return initPromise;
@@ -279,9 +414,14 @@ window.NSC = (function () {
       db = firebase.firestore();
       booksCol = db.collection('books');
       tbrCol = db.collection('tbr');
+      membersCol = db.collection('members');
 
       // Seed the database the first time anyone loads the site.
-      const [booksSnap, tbrSnap] = await Promise.all([booksCol.limit(1).get(), tbrCol.limit(1).get()]);
+      const [booksSnap, tbrSnap, membersSnap] = await Promise.all([
+        booksCol.limit(1).get(),
+        tbrCol.limit(1).get(),
+        membersCol.limit(1).get()
+      ]);
       if (booksSnap.empty) {
         const batch = db.batch();
         INITIAL_BOOKS.forEach(b => batch.set(booksCol.doc(b.id), b));
@@ -292,13 +432,17 @@ window.NSC = (function () {
         INITIAL_TBR.forEach(r => batch.set(tbrCol.doc(r.id), r));
         await batch.commit();
       }
+      if (membersSnap.empty) {
+        const batch = db.batch();
+        INITIAL_MEMBERS.forEach(m => batch.set(membersCol.doc(m.id), m));
+        await batch.commit();
+      }
 
       // Subscribe for real-time updates. Resolve init() only after the first
-      // snapshot of each collection lands, so loadBooks/loadTbr are populated.
-      let booksReady = false;
-      let tbrReady = false;
+      // snapshot of each collection lands so loadBooks/loadTbr/loadMembers are populated.
+      let booksReady = false, tbrReady = false, membersReady = false;
       await new Promise(resolve => {
-        const checkReady = () => { if (booksReady && tbrReady) resolve(); };
+        const checkReady = () => { if (booksReady && tbrReady && membersReady) resolve(); };
         booksCol.onSnapshot(snap => {
           booksCache = snap.docs.map(d => d.data());
           if (!booksReady) { booksReady = true; checkReady(); }
@@ -309,6 +453,11 @@ window.NSC = (function () {
           if (!tbrReady) { tbrReady = true; checkReady(); }
           else triggerChange('tbr');
         }, err => console.error('tbr snapshot error:', err));
+        membersCol.onSnapshot(snap => {
+          membersCache = snap.docs.map(d => d.data());
+          if (!membersReady) { membersReady = true; checkReady(); }
+          else triggerChange('members');
+        }, err => console.error('members snapshot error:', err));
       });
 
       initialized = true;
@@ -327,8 +476,10 @@ window.NSC = (function () {
   }
 
   /* ---------- Synchronous reads (return from cache) ---------- */
-  function loadBooks() { return booksCache.map(b => ({ ...b })); }
-  function loadTbr()   { return tbrCache.map(r => ({ ...r })); }
+  function loadBooks()   { return booksCache.map(b => ({ ...b })); }
+  function loadTbr()     { return tbrCache.map(r => ({ ...r })); }
+  function loadMembers() { return membersCache.map(m => ({ ...m, answers: { ...(m.answers || {}) } })); }
+  function memberQuestions() { return MEMBER_QUESTIONS.slice(); }
 
   /* ---------- Writes (async, fire and forget for callers) ---------- */
   function saveBooks(books) {
@@ -346,6 +497,11 @@ window.NSC = (function () {
     rows.forEach(r => batch.set(tbrCol.doc(r.id), stripUndefined(r)));
     tbrCache.forEach(r => { if (!newIds.has(r.id)) batch.delete(tbrCol.doc(r.id)); });
     return batch.commit().catch(e => { console.error('saveTbr failed:', e); throw e; });
+  }
+  function saveMember(member) {
+    if (!db) return Promise.reject(new Error('NSC not initialized — call NSC.init() first.'));
+    return membersCol.doc(member.id).set(stripUndefined(member))
+      .catch(e => { console.error('saveMember failed:', e); throw e; });
   }
   function resetAll() {
     // Wipe everything and re-seed from INITIAL_*. Useful for testing.
@@ -440,6 +596,7 @@ window.NSC = (function () {
     MEMBERS, MEMBER_LABELS,
     init, onChange,
     loadBooks, saveBooks, loadTbr, saveTbr, resetAll,
+    loadMembers, saveMember, memberQuestions,
     avgRating, coverPath, formatDate, formatMonthYear, yearOf, isUpcoming,
     bookCoverHTML, escapeHtml, slugify
   };
