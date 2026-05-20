@@ -607,6 +607,8 @@
     document.getElementById('wheel-result').classList.remove('show');
     document.getElementById('wheel-result').innerHTML = '';
     lastWinner = null;
+    // Auto-spin again after the result UI collapses
+    setTimeout(() => { spinTheWheel(); }, 300);
   }
 
   document.getElementById('open-wheel').addEventListener('click', openWheel);

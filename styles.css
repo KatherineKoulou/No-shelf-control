@@ -1210,9 +1210,11 @@ table.reads-table { width: 100%; border-collapse: separate; border-spacing: 0; m
   position: relative;
   width: 100%;
   max-width: 460px;
-  margin: 1.5rem auto 1rem;
+  margin: 1rem auto 0.25rem;
   aspect-ratio: 1;
 }
+#wheel-modal .modal-footer { margin-top: 0.5rem; }
+#wheel-modal .wheel-confirm { margin-top: 0.25rem; }
 .wheel-container canvas {
   display: block;
   width: 100%;
@@ -1245,13 +1247,20 @@ table.reads-table { width: 100%; border-collapse: separate; border-spacing: 0; m
 
 .wheel-result {
   text-align: center;
-  margin: 0.5rem 0 0.5rem;
-  min-height: 70px;
+  margin: 0;
+  min-height: 0;
+  max-height: 0;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.5s, transform 0.5s;
+  transition: opacity 0.4s, transform 0.4s, max-height 0.4s, margin 0.4s;
 }
-.wheel-result.show { opacity: 1; transform: translateY(0); }
+.wheel-result.show {
+  opacity: 1;
+  transform: translateY(0);
+  margin: 0.25rem 0 0.25rem;
+  max-height: 220px;
+}
 .wheel-result .winner-label {
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.22em;
   color: var(--pink-medium); font-weight: 700;
@@ -1302,6 +1311,29 @@ table.reads-table { width: 100%; border-collapse: separate; border-spacing: 0; m
 .member-row .label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.16em; color: var(--dark-text-mute); font-weight: 600; padding-top: 2px; }
 .member-row .value { color: var(--dark-text-soft); }
 .member-row .value.empty { color: rgba(242, 221, 216, 0.3); font-style: italic; }
+.member-card { position: relative; }
+.member-edit-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--pink-medium);
+  border: 1px solid var(--dark-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.member-edit-btn:hover {
+  background: var(--red-primary);
+  color: var(--white);
+  border-color: var(--red-primary);
+}
+
 .member-card.theme-1 .member-avatar { background: var(--red-primary); }
 .member-card.theme-2 .member-avatar { background: var(--mauve); }
 .member-card.theme-3 .member-avatar { background: var(--rose-dust); }

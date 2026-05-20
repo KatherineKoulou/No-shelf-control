@@ -33,26 +33,62 @@
     <div class="container">
       <div class="section-eyebrow">The Roster</div>
       <h1 class="section-title" style="font-size: clamp(2.5rem, 5vw, 4.25rem); margin-bottom: 1rem;">The <span class="accent">members</span></h1>
-      <p class="section-intro">Six readers, six wildly different tastes. Click any answer to edit it — changes save automatically and sync to everyone in the club.</p>
+      <p class="section-intro">Click any member's <strong>Edit</strong> button to open their profile and fill in or update their answers. Empty questions stay hidden until they're filled in.</p>
 
       <div class="members-toolbar">
-        <div class="members-hint">Click an answer to edit. Press Enter to save, Esc to cancel.</div>
+        <div class="members-hint">Each member's card shows only the questions they've answered.</div>
+        <button class="btn" id="add-member-btn"><span class="btn-icon-arrow">+</span> Add Member</button>
       </div>
 
       <div class="member-grid" id="member-grid"></div>
     </div>
   </section>
 
-  <!-- Quick compatibility / fun trivia -->
+  <!-- Club trivia -->
   <section class="section-light">
     <div class="container">
       <div class="section-eyebrow">Club Trivia</div>
       <h2 class="section-title">Patterns of the <span class="accent">pack</span></h2>
       <p class="section-intro">A few things this group has in common (and where they don't).</p>
-
       <div class="stats" id="member-stats"></div>
     </div>
   </section>
+
+  <!-- Edit Member Modal -->
+  <div class="modal-backdrop" id="edit-modal">
+    <div class="modal">
+      <button class="modal-close" id="edit-close" aria-label="Close">×</button>
+      <h2 class="modal-title">Edit <span class="accent" id="edit-member-name"></span></h2>
+      <div class="modal-sub">Fill in only the questions you want to share. Leave any blank to hide them on your card.</div>
+      <form id="edit-form">
+        <div class="field-grid" id="edit-fields"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="edit-cancel" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Cancel</button>
+          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Save Answers</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Member Modal -->
+  <div class="modal-backdrop" id="add-modal">
+    <div class="modal">
+      <button class="modal-close" id="add-close" aria-label="Close">×</button>
+      <h2 class="modal-title">Add a <span class="accent">member</span></h2>
+      <div class="modal-sub">Just the basics — they can fill in their answers afterward by clicking Edit on their card.</div>
+      <form id="add-form">
+        <div class="field-grid">
+          <div class="field full"><label for="new-name">Name</label><input id="new-name" type="text" required placeholder="e.g. Jasmine" /></div>
+          <div class="field full"><label for="new-handle">Tagline (optional)</label><input id="new-handle" type="text" placeholder="Mystery devotee · Audiobook loyalist" /></div>
+        </div>
+        <p class="notice" style="color: var(--mauve);">Adding a member also adds a rating column for them on the All Reads table.</p>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="add-cancel" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Cancel</button>
+          <button type="submit" class="btn"><span class="btn-icon-arrow">»</span> Add Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container">
@@ -78,8 +114,8 @@
 
   let members = NSC.loadMembers();
   const QUESTIONS = NSC.memberQuestions();
+  let editingMemberId = null;
 
-  // Re-render when members change from any source
   NSC.onChange((kind) => {
     if (kind === 'members') {
       members = NSC.loadMembers();
@@ -90,106 +126,138 @@
 
   function renderMembers() {
     const grid = document.getElementById('member-grid');
-    // Sort consistently (alphabetical by name) so order is stable
     const ordered = members.slice().sort((a, b) => a.name.localeCompare(b.name));
+
     grid.innerHTML = ordered.map(m => {
       const answers = m.answers || {};
-      const rows = QUESTIONS.map(q => {
-        const val = answers[q.key];
-        const isEmpty = !val;
-        const display = isEmpty ? '— add answer —' : NSC.escapeHtml(val);
-        return `
-          <div class="member-row">
-            <div class="label">${NSC.escapeHtml(q.label)}</div>
-            <div class="value editable ${isEmpty ? 'empty' : ''}" data-member-id="${m.id}" data-field="${q.key}">${display}</div>
-          </div>
-        `;
-      }).join('');
+      const answered = QUESTIONS.filter(q => answers[q.key] && String(answers[q.key]).trim() !== '');
+      const rows = answered.map(q => `
+        <div class="member-row">
+          <div class="label">${NSC.escapeHtml(q.label)}</div>
+          <div class="value">${NSC.escapeHtml(answers[q.key])}</div>
+        </div>
+      `).join('');
+      const emptyState = answered.length ? '' :
+        '<p style="color: var(--dark-text-mute); font-style: italic; font-family: \'Playfair Display\', serif; margin-top: 0.5rem;">No answers yet — click Edit to add some.</p>';
+
       return `
         <article class="member-card ${NSC.escapeHtml(m.themeClass || 'theme-1')}">
-          <div class="member-avatar">${NSC.escapeHtml(m.avatar || (m.name || '?').charAt(0))}</div>
+          <button type="button" class="member-edit-btn" data-edit-id="${NSC.escapeHtml(m.id)}">Edit</button>
+          <div class="member-avatar">${NSC.escapeHtml(m.avatar || (m.name || '?').charAt(0).toUpperCase())}</div>
           <div class="member-name">${NSC.escapeHtml(m.name)}</div>
           <div class="member-handle">${NSC.escapeHtml(m.handle || '')}</div>
-          ${rows}
+          ${rows || emptyState}
         </article>
       `;
     }).join('');
 
-    // Wire up click-to-edit on each value cell
-    grid.querySelectorAll('.value.editable').forEach(cell => {
-      cell.addEventListener('click', () => makeAnswerEditable(cell));
+    grid.querySelectorAll('.member-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditModal(btn.dataset.editId));
     });
   }
 
-  function makeAnswerEditable(cell) {
-    if (cell.dataset.editing === '1') return;
-    cell.dataset.editing = '1';
-    cell.dataset.original = cell.innerHTML;
+  /* ---------- Edit modal ---------- */
+  function openEditModal(memberId) {
+    const m = members.find(x => x.id === memberId);
+    if (!m) return;
+    editingMemberId = memberId;
+    document.getElementById('edit-member-name').textContent = m.name;
+    const answers = m.answers || {};
+    document.getElementById('edit-fields').innerHTML = QUESTIONS.map(q => `
+      <div class="field">
+        <label for="ef-${q.key}">${NSC.escapeHtml(q.label)}</label>
+        <input id="ef-${q.key}" type="text" data-key="${q.key}" value="${NSC.escapeHtml(answers[q.key] || '')}" placeholder="leave blank to skip" />
+      </div>
+    `).join('');
+    document.getElementById('edit-modal').classList.add('open');
+  }
 
-    const memberId = cell.dataset.memberId;
-    const field = cell.dataset.field;
-    const member = members.find(m => m.id === memberId);
-    if (!member) return;
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    editingMemberId = null;
+  }
 
-    const currentVal = (member.answers && member.answers[field]) || '';
-    cell.classList.remove('empty');
-    cell.textContent = currentVal;
-    cell.setAttribute('contenteditable', 'true');
-    cell.focus();
+  document.getElementById('edit-close').addEventListener('click', closeEditModal);
+  document.getElementById('edit-cancel').addEventListener('click', closeEditModal);
+  document.getElementById('edit-modal').addEventListener('click', (e) => { if (e.target.id === 'edit-modal') closeEditModal(); });
 
-    // Select all
-    const range = document.createRange();
-    range.selectNodeContents(cell);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    async function commit() {
-      cell.setAttribute('contenteditable', 'false');
-      cell.dataset.editing = '';
-      const newVal = cell.textContent.trim();
-
-      // Only save if changed
-      const oldVal = (member.answers && member.answers[field]) || '';
-      if (newVal === oldVal) {
-        // No change — re-render this cell to restore "— add answer —" placeholder if needed
-        renderMembers();
-        return;
-      }
-
-      member.answers = { ...(member.answers || {}), [field]: newVal };
-      try {
-        await NSC.saveMember(member);
-        // onSnapshot will fire and re-render
-      } catch (err) {
-        console.error('Failed to save member answer:', err);
-        cell.innerHTML = cell.dataset.original;
-        alert('Could not save — check your connection and try again.');
-      }
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!editingMemberId) return;
+    const m = members.find(x => x.id === editingMemberId);
+    if (!m) return;
+    const newAnswers = { ...(m.answers || {}) };
+    document.querySelectorAll('#edit-fields input[data-key]').forEach(inp => {
+      newAnswers[inp.dataset.key] = inp.value.trim();
+    });
+    const updated = { ...m, answers: newAnswers };
+    try {
+      await NSC.saveMember(updated);
+      closeEditModal();
+    } catch (err) {
+      console.error('Failed to save member:', err);
+      alert('Could not save — check your connection and try again.');
     }
+  });
 
-    cell.addEventListener('blur', commit, { once: true });
-    cell.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); cell.blur(); }
-      if (e.key === 'Escape') {
-        cell.innerHTML = cell.dataset.original;
-        cell.setAttribute('contenteditable', 'false');
-        cell.dataset.editing = '';
-      }
-    });
-  }
+  /* ---------- Add member modal ---------- */
+  document.getElementById('add-member-btn').addEventListener('click', () => {
+    document.getElementById('add-form').reset();
+    document.getElementById('add-modal').classList.add('open');
+  });
+  document.getElementById('add-close').addEventListener('click', () => document.getElementById('add-modal').classList.remove('open'));
+  document.getElementById('add-cancel').addEventListener('click', () => document.getElementById('add-modal').classList.remove('open'));
+  document.getElementById('add-modal').addEventListener('click', (e) => { if (e.target.id === 'add-modal') e.currentTarget.classList.remove('open'); });
+
+  document.getElementById('add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('new-name').value.trim();
+    const handle = document.getElementById('new-handle').value.trim();
+    if (!name) return;
+
+    // Generate a unique id from the name slug
+    const base = NSC.slugify(name);
+    const existing = members.map(m => m.id);
+    let id = base;
+    let n = 2;
+    while (existing.includes(id)) id = `${base}-${n++}`;
+
+    // Pick a theme that isn't already in use, or cycle if all are taken
+    const themes = ['theme-1', 'theme-2', 'theme-3', 'theme-4', 'theme-5', 'theme-6'];
+    const used = new Set(members.map(m => m.themeClass).filter(Boolean));
+    const themeClass = themes.find(t => !used.has(t)) || themes[members.length % themes.length];
+
+    const blankAnswers = {};
+    QUESTIONS.forEach(q => { blankAnswers[q.key] = ''; });
+
+    const newMember = {
+      id,
+      name,
+      avatar: name.charAt(0).toUpperCase(),
+      themeClass,
+      handle: handle || '',
+      answers: blankAnswers
+    };
+
+    try {
+      await NSC.saveMember(newMember);
+      document.getElementById('add-modal').classList.remove('open');
+    } catch (err) {
+      console.error('Failed to add member:', err);
+      alert('Could not save — check your connection and try again.');
+    }
+  });
 
   function renderStats() {
-    // Compute live trivia from member answers
     const total = members.length || 1;
     const count = (key, predicate) => members.filter(m => {
       const v = (m.answers && m.answers[key]) || '';
       return predicate(v.toLowerCase());
     }).length;
 
-    const kindle = count('readingFormat', v => v.includes('kindle'));
-    const paperback = count('hardcoverPaperback', v => v.includes('paperback'));
-    const percyJackson = count('yaSeries', v => v.includes('percy'));
+    const kindle      = count('readingFormat',     v => v.includes('kindle'));
+    const paperback   = count('hardcoverPaperback', v => v.includes('paperback'));
+    const percyJackson = count('yaSeries',         v => v.includes('percy'));
     const romanceLeast = count('leastFavoriteGenre', v => v.includes('romance'));
 
     document.getElementById('member-stats').innerHTML = `

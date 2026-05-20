@@ -74,9 +74,7 @@
     <div class="container">
       <div style="text-align: center; max-width: 760px; margin: 0 auto 3rem;">
         <div class="section-eyebrow">About No Shelf Control</div>
-        <h2 class="section-title" style="font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.35;">
-          No Shelf Control is more than a book club — it's six friends with disagreements, snacks, and too many opinions per chapter. We read fearlessly, argue lovingly, and rate generously (or savagely, depending on the month).
-        </h2>
+        <h2 class="section-title" id="about-heading" style="font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.35;"></h2>
         <div style="margin-top: 1.5rem;">
           <a class="btn" href="members.html"><span class="btn-icon-arrow">»</span> Meet the Crew</a>
         </div>
@@ -168,14 +166,19 @@
       </div>`;
   }
 
-  // Stats — all derived live from books data
+  // Stats — all derived live from books and members data
   const totalPages = books.reduce((s,b)=> s+(b.pages||0), 0);
   const genres = {};
   books.forEach(b => { if (b.genre) genres[b.genre] = (genres[b.genre]||0)+1; });
   let topGenre = '', topCount = 0;
   Object.entries(genres).forEach(([g, c]) => { if (c > topCount) { topGenre = g; topCount = c; } });
   const topGenrePct = books.length ? Math.round((topCount / books.length) * 100) : 0;
-  const memberCount = (NSC.MEMBERS && NSC.MEMBERS.length) || 6;
+  const memberCount = NSC.loadMembers().length || 6;
+
+  // About-heading — number of friends adjusts to current member count
+  const friendsWord = NSC.numberToWord(memberCount);
+  document.getElementById('about-heading').textContent =
+    `No Shelf Control is more than a book club — it's ${friendsWord} friends with disagreements, snacks, and too many opinions per chapter. We read fearlessly, argue lovingly, and rate generously (or savagely, depending on the month).`;
 
   document.getElementById('home-stats').innerHTML = `
     <div class="stat"><div class="stat-num">${books.length}</div><div class="stat-label">Books Read</div></div>

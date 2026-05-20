@@ -530,10 +530,32 @@ window.NSC = (function () {
   }
 
   function avgRating(book) {
-    const vals = MEMBERS.map(m => book.ratings ? book.ratings[m] : null)
+    // Average across whatever member keys exist in book.ratings — agnostic
+    // to which members are currently active.
+    if (!book.ratings) return null;
+    const vals = Object.values(book.ratings)
       .filter(v => typeof v === 'number' && !isNaN(v));
     if (!vals.length) return null;
     return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  function memberList() {
+    // Returns the active member roster, sorted alphabetically by name.
+    // Falls back to the legacy hardcoded list if the members collection is empty.
+    if (!membersCache.length) {
+      return MEMBERS.map(id => ({ id, name: MEMBER_LABELS[id] || id }));
+    }
+    return membersCache.slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(m => ({ id: m.id, name: m.name }));
+  }
+
+  function numberToWord(n) {
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six',
+      'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen',
+      'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+    if (Number.isInteger(n) && n >= 0 && n < words.length) return words[n];
+    return String(n);
   }
 
   function slugify(s) {
@@ -596,7 +618,7 @@ window.NSC = (function () {
     MEMBERS, MEMBER_LABELS,
     init, onChange,
     loadBooks, saveBooks, loadTbr, saveTbr, resetAll,
-    loadMembers, saveMember, memberQuestions,
+    loadMembers, saveMember, memberQuestions, memberList, numberToWord,
     avgRating, coverPath, formatDate, formatMonthYear, yearOf, isUpcoming,
     bookCoverHTML, escapeHtml, slugify
   };

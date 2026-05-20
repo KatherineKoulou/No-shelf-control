@@ -43,23 +43,7 @@
       <div class="reads-table-wrap">
         <table class="reads-table">
           <thead>
-            <tr>
-              <th>Book</th>
-              <th>Author</th>
-              <th>Genre</th>
-              <th class="center">Pages</th>
-              <th>Date</th>
-              <th>Where</th>
-              <th class="center">Goodreads Rating</th>
-              <th class="center">Joanna</th>
-              <th class="center">Kat</th>
-              <th class="center">Lexey</th>
-              <th class="center">Mazhar</th>
-              <th class="center">Meesh</th>
-              <th class="center">Zyrian</th>
-              <th class="center">Club Avg</th>
-              <th class="center">Actions</th>
-            </tr>
+            <tr id="reads-thead-row"></tr>
           </thead>
           <tbody id="reads-tbody"></tbody>
         </table>
@@ -105,12 +89,6 @@
             <label for="reviewer">Your Name</label>
             <select id="reviewer" required>
               <option value="">Select…</option>
-              <option>Joanna</option>
-              <option>Katherine</option>
-              <option>Lexey</option>
-              <option>Mazhar</option>
-              <option>Michelle</option>
-              <option>Zyrian</option>
             </select>
           </div>
           <div class="field">
@@ -186,19 +164,53 @@
 
   let books = NSC.loadBooks();
 
-  // Re-render whenever data changes (locally or from another browser)
-  NSC.onChange((kind) => { if (kind === 'books') rerender(); });
+  // Re-render whenever books OR members change (locally or from another browser)
+  NSC.onChange((kind) => {
+    if (kind === 'books' || kind === 'members') rerender();
+  });
 
   function rerender() {
     books = NSC.loadBooks();
+    renderTableHeaders();
     renderTable();
     renderBookSelect();
+    renderReviewerOptions();
     renderStats();
     renderCharts();
   }
 
+  function renderTableHeaders() {
+    const ml = NSC.memberList();
+    const memberThs = ml.map(m =>
+      `<th class="center" data-member-id="${NSC.escapeHtml(m.id)}">${NSC.escapeHtml(m.name)}</th>`
+    ).join('');
+    document.getElementById('reads-thead-row').innerHTML = `
+      <th>Book</th>
+      <th>Author</th>
+      <th>Genre</th>
+      <th class="center">Pages</th>
+      <th>Date</th>
+      <th>Where</th>
+      <th class="center">Goodreads Rating</th>
+      ${memberThs}
+      <th class="center">Club Avg</th>
+      <th class="center">Actions</th>
+    `;
+  }
+
+  function renderReviewerOptions() {
+    const ml = NSC.memberList();
+    const sel = document.getElementById('reviewer');
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select…</option>' +
+      ml.map(m => `<option value="${NSC.escapeHtml(m.id)}">${NSC.escapeHtml(m.name)}</option>`).join('');
+    if (prev) sel.value = prev;
+  }
+
   function renderTable() {
     const tbody = document.getElementById('reads-tbody');
+    const ml = NSC.memberList();
     // newest first
     const sorted = books.slice().sort((a,b)=> b.date.localeCompare(a.date));
     document.getElementById('reads-count').textContent = `· ${books.length} books`;
@@ -206,13 +218,13 @@
     tbody.innerHTML = sorted.map(b => {
       const upcoming = NSC.isUpcoming(b);
       const avg = NSC.avgRating(b);
-      const cell = (m) => {
-        const v = b.ratings ? b.ratings[m] : null;
+      const memberCells = ml.map(m => {
+        const v = b.ratings ? b.ratings[m.id] : null;
         const empty = (v === null || v === undefined);
         return empty
-          ? `<td class="rating-cell empty editable" data-id="${b.id}" data-field="ratings.${m}">—</td>`
-          : `<td class="rating-cell editable" data-id="${b.id}" data-field="ratings.${m}">${v}</td>`;
-      };
+          ? `<td class="rating-cell empty editable" data-id="${b.id}" data-field="ratings.${m.id}">—</td>`
+          : `<td class="rating-cell editable" data-id="${b.id}" data-field="ratings.${m.id}">${v}</td>`;
+      }).join('');
       return `
         <tr class="${upcoming ? 'upcoming' : ''}" data-id="${b.id}">
           <td class="title-cell editable" data-id="${b.id}" data-field="title">${NSC.escapeHtml(b.title)}</td>
@@ -222,7 +234,7 @@
           <td class="date-cell editable" data-id="${b.id}" data-field="date">${NSC.formatDate(b.date)}</td>
           <td class="location-cell editable" data-id="${b.id}" data-field="location">${NSC.escapeHtml(b.location)}</td>
           <td class="gr-cell editable" data-id="${b.id}" data-field="goodreads">${b.goodreads}</td>
-          ${cell('joanna')}${cell('kat')}${cell('lexey')}${cell('mazhar')}${cell('meesh')}${cell('zyrian')}
+          ${memberCells}
           <td class="avg-cell">${avg !== null ? avg.toFixed(2) : '—'}</td>
           <td class="reads-actions-cell">
             <button class="icon-btn danger row-delete" data-id="${b.id}" title="Delete row">×</button>
@@ -336,25 +348,19 @@
         .map(b => `<option value="${NSC.escapeHtml(b.id)}">${NSC.escapeHtml(b.title)} — ${NSC.escapeHtml(b.author)}</option>`).join('');
   }
 
-  // Submit-a-Review form: writes the rating into book.ratings.<member> in Firestore.
-  const REVIEWER_TO_KEY = {
-    'Joanna': 'joanna',
-    'Katherine': 'kat',
-    'Lexey': 'lexey',
-    'Mazhar': 'mazhar',
-    'Michelle': 'meesh',
-    'Zyrian': 'zyrian'
-  };
-
+  // Submit-a-Review form: writes the rating into book.ratings.<memberId> in Firestore.
   document.getElementById('review-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const reviewer = document.getElementById('reviewer').value;
+    const ratingsKey = document.getElementById('reviewer').value; // already a member id
     const bookId = document.getElementById('book-select').value;
     const rating = parseFloat(document.getElementById('rating').value);
     const result = document.getElementById('review-result');
     const submitBtn = document.getElementById('review-submit-btn');
 
-    const ratingsKey = REVIEWER_TO_KEY[reviewer];
+    // Resolve the human-readable name for the confirmation message
+    const member = NSC.memberList().find(m => m.id === ratingsKey);
+    const reviewerName = member ? member.name : ratingsKey;
+
     if (!ratingsKey || !bookId || isNaN(rating)) {
       result.textContent = 'Please fill out every field.';
       result.style.color = 'var(--red-deep)';
@@ -371,7 +377,7 @@
       return;
     }
 
-    book.ratings = book.ratings || { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null };
+    book.ratings = book.ratings || {};
     book.ratings[ratingsKey] = clamped;
 
     submitBtn.disabled = true;
@@ -380,7 +386,7 @@
 
     try {
       await NSC.saveBooks(freshBooks);
-      result.textContent = `Saved! ${reviewer} rated "${book.title}" ${clamped}/5.`;
+      result.textContent = `Saved! ${reviewerName} rated "${book.title}" ${clamped}/5.`;
       result.style.color = 'var(--red-primary)';
       e.target.reset();
       setTimeout(() => { if (result) result.textContent = ''; }, 6000);
@@ -412,11 +418,12 @@
 
   let ratingsChart, genreChart;
   function renderCharts() {
-    // Per-member average across all books they've rated
-    const memberAvgs = NSC.MEMBERS.map(m => {
-      const vals = books.map(b => b.ratings ? b.ratings[m] : null).filter(v => typeof v === 'number' && !isNaN(v));
+    // Per-member average across all books they've rated (uses dynamic roster)
+    const ml = NSC.memberList();
+    const memberAvgs = ml.map(m => {
+      const vals = books.map(b => b.ratings ? b.ratings[m.id] : null).filter(v => typeof v === 'number' && !isNaN(v));
       const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
-      return { m, avg, count: vals.length };
+      return { id: m.id, name: m.name, avg, count: vals.length };
     });
 
     // Club average across all rated books
@@ -428,7 +435,7 @@
     ratingsChart = new Chart(ctx1, {
       type: 'bar',
       data: {
-        labels: memberAvgs.map(o => NSC.MEMBER_LABELS[o.m]),
+        labels: memberAvgs.map(o => o.name),
         datasets: [
           {
             label: 'Member Avg',
@@ -463,7 +470,7 @@
               label: (ctx) => {
                 if (ctx.dataset.label === 'Club Avg') return ` Club Avg: ${clubMean.toFixed(2)}`;
                 const m = memberAvgs[ctx.dataIndex];
-                return ` ${NSC.MEMBER_LABELS[m.m]}: ${m.avg.toFixed(2)} (${m.count} books)`;
+                return ` ${m.name}: ${m.avg.toFixed(2)} (${m.count} books)`;
               }
             }
           }
