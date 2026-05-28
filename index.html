@@ -139,27 +139,33 @@
   NSC.onChange(() => location.reload());
   const books = NSC.loadBooks();
 
-  // Featured: nearest upcoming OR most recent
+  // Featured: undated books (just-chosen next reads) > nearest future > most recent
   const now = Date.now();
-  const future = books.filter(b => new Date(b.date+'T00:00:00').getTime() >= now)
-                      .sort((a,b)=> a.date.localeCompare(b.date));
-  const featured = future[0] || books.slice().sort((a,b)=> b.date.localeCompare(a.date))[0];
+  const undated = books.filter(b => !b.date)
+                       .sort((a,b) => String(b.id).localeCompare(String(a.id))); // newest id first
+  const future = books.filter(b => b.date && new Date(b.date+'T00:00:00').getTime() >= now)
+                      .sort((a,b) => a.date.localeCompare(b.date));
+  const past = books.filter(b => b.date && new Date(b.date+'T00:00:00').getTime() < now)
+                    .sort((a,b) => b.date.localeCompare(a.date));
+  const featured = undated[0] || future[0] || past[0];
 
   const fEl = document.getElementById('featured-read');
   if (featured) {
-    const isUp = NSC.isUpcoming(featured);
+    const isUp = !featured.date || NSC.isUpcoming(featured);
+    const dateDisplay = featured.date ? NSC.formatDate(featured.date) : 'Date TBD';
+    const locationDisplay = featured.location ? NSC.escapeHtml(featured.location) : '<em style="opacity:0.7;">TBD</em>';
     fEl.innerHTML = `
       <div class="featured">
         ${NSC.bookCoverHTML(featured)}
         <div>
-          <div class="featured-eyebrow">${isUp ? 'Upcoming' : 'Currently Reading'} · ${NSC.formatDate(featured.date)}</div>
+          <div class="featured-eyebrow">${isUp ? 'Upcoming' : 'Currently Reading'} · ${dateDisplay}</div>
           <h3 class="featured-title">${NSC.escapeHtml(featured.title)}</h3>
           <div class="featured-author">by ${NSC.escapeHtml(featured.author)}</div>
           <div class="featured-meta">
             <div><strong>Genre</strong>${NSC.escapeHtml(featured.genre)}</div>
             <div><strong>Pages</strong>${featured.pages}</div>
             <div><strong>Goodreads</strong>${featured.goodreads}</div>
-            <div><strong>Where</strong>${NSC.escapeHtml(featured.location)}</div>
+            <div><strong>Where</strong>${locationDisplay}</div>
           </div>
           <a class="btn btn-ghost" href="shelf.html"><span class="btn-icon-arrow">»</span> Preview Questions</a>
         </div>

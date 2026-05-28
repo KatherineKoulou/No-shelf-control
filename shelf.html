@@ -141,8 +141,12 @@
       const y = NSC.yearOf(b.date) || 'Undated';
       (byYear[y] = byYear[y] || []).push(b);
     });
-    const years = Object.keys(byYear).sort((a,b)=> b-a);
-    const yearLabels = { 2026: 'In Progress', 2025: 'A Year of Kuang', 2024: 'Where It All Began' };
+    const years = Object.keys(byYear).sort((a, b) => {
+      if (a === 'Undated') return -1; // undated (next read) sits on top
+      if (b === 'Undated') return 1;
+      return Number(b) - Number(a);
+    });
+    const yearLabels = { 2026: 'In Progress', 2025: 'A Year of Kuang', 2024: 'Where It All Began', 'Undated': 'Up Next' };
 
     root.innerHTML = years.map((year, idx) => {
       // sort within year newest first
@@ -167,7 +171,7 @@
                       <div class="shelf-caption">
                         <div class="book-title">${NSC.escapeHtml(b.title)}</div>
                         <div class="book-author">${NSC.escapeHtml(b.author)}</div>
-                        <span class="month">${NSC.formatMonthYear(b.date)}</span>
+                        <span class="month">${b.date ? NSC.formatMonthYear(b.date) : 'Date TBD'}</span>
                       </div>
                     </div>
                   `).join('')}
@@ -201,7 +205,7 @@
       <div class="modal-cover-row">
         ${NSC.bookCoverHTML(b)}
         <div class="modal-meta">
-          <div class="meeting-line">${NSC.formatDate(b.date)} · ${NSC.escapeHtml(b.location)}</div>
+          <div class="meeting-line">${b.date ? NSC.formatDate(b.date) : 'Date TBD'} · ${b.location ? NSC.escapeHtml(b.location) : 'Location TBD'}</div>
           <h2>${NSC.escapeHtml(b.title)}</h2>
           <div class="modal-author">by ${NSC.escapeHtml(b.author)}</div>
           <div class="stats-line">

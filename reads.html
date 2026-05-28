@@ -231,8 +231,8 @@
           <td class="author-cell editable" data-id="${b.id}" data-field="author">${NSC.escapeHtml(b.author)}</td>
           <td class="genre-cell editable" data-id="${b.id}" data-field="genre"><span class="tag tag-outline">${NSC.escapeHtml(b.genre)}</span></td>
           <td class="pages-cell center editable" data-id="${b.id}" data-field="pages">${b.pages}</td>
-          <td class="date-cell editable" data-id="${b.id}" data-field="date">${NSC.formatDate(b.date)}</td>
-          <td class="location-cell editable" data-id="${b.id}" data-field="location">${NSC.escapeHtml(b.location)}</td>
+          <td class="date-cell editable" data-id="${b.id}" data-field="date">${b.date ? NSC.formatDate(b.date) : '<em style="color:var(--mauve);">TBD</em>'}</td>
+          <td class="location-cell editable" data-id="${b.id}" data-field="location">${b.location ? NSC.escapeHtml(b.location) : '<em style="color:var(--mauve);">TBD</em>'}</td>
           <td class="gr-cell editable" data-id="${b.id}" data-field="goodreads">${b.goodreads}</td>
           ${memberCells}
           <td class="avg-cell">${avg !== null ? avg.toFixed(2) : '—'}</td>

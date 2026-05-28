@@ -73,6 +73,48 @@
     </div>
   </section>
 
+  <!-- TBR Add/Edit Modal -->
+  <div class="modal-backdrop" id="tbr-modal">
+    <div class="modal">
+      <button class="modal-close" id="tbr-close" aria-label="Close">×</button>
+      <h2 class="modal-title" id="tbr-modal-title">Add a <span class="accent">nomination</span></h2>
+      <div class="modal-sub" id="tbr-modal-sub">All fields are required. The cover image is optional.</div>
+
+      <form id="tbr-form">
+        <div class="field-grid">
+          <div class="field full"><label for="tbr-title-input">Book Title</label><input id="tbr-title-input" type="text" required /></div>
+          <div class="field"><label for="tbr-author-input">Author</label><input id="tbr-author-input" type="text" required /></div>
+          <div class="field"><label for="tbr-genre-input">Genre</label>
+            <select id="tbr-genre-input" required></select>
+          </div>
+          <div class="field"><label for="tbr-pages-input">Pages</label><input id="tbr-pages-input" type="number" min="1" required /></div>
+          <div class="field"><label for="tbr-goodreads-input">Goodreads Rating</label><input id="tbr-goodreads-input" type="number" min="0" max="5" step="0.01" required /></div>
+          <div class="field full"><label for="tbr-member-input">Nominated By</label>
+            <select id="tbr-member-input" required></select>
+          </div>
+
+          <div class="field full">
+            <label>Book Cover (optional)</label>
+            <div class="dropzone" id="tbr-dropzone" tabindex="0" role="button" aria-label="Upload cover image">
+              <input id="tbr-cover-file" type="file" accept="image/*" />
+              <button type="button" class="dropzone-clear" id="tbr-dropzone-clear" aria-label="Remove image">×</button>
+              <img class="dropzone-preview" id="tbr-dropzone-preview" alt="Cover preview" />
+              <div class="dropzone-content">
+                <div class="dropzone-icon">↑</div>
+                <div class="dropzone-text">Drag a cover image here, or <span class="browse">browse</span></div>
+                <div class="dropzone-sub">Image will be auto-compressed for storage</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="tbr-cancel" style="color:var(--mauve); border-color: rgba(166,104,104,0.3);">Cancel</button>
+          <button type="submit" class="btn" id="tbr-save-btn"><span class="btn-icon-arrow">»</span> Save Nomination</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Wheel Modal -->
   <div class="modal-backdrop" id="wheel-modal">
     <div class="modal">
@@ -213,34 +255,30 @@
 
     tbody.innerHTML = filtered.map(r => `
       <tr data-id="${r.id}">
-        <td class="tbr-title-cell editable" data-field="title">${NSC.escapeHtml(r.title)}</td>
-        <td class="tbr-author-cell editable" data-field="author">${NSC.escapeHtml(r.author)}</td>
-        <td class="editable" data-field="genre"><span class="tag">${NSC.escapeHtml(r.genre)}</span></td>
-        <td class="center editable" data-field="pages">${r.pages}</td>
-        <td class="tbr-rating editable" data-field="goodreads">★ ${r.goodreads}</td>
-        <td class="editable" data-field="member">${NSC.escapeHtml(r.member)}</td>
+        <td class="tbr-title-cell">${NSC.escapeHtml(r.title)}</td>
+        <td class="tbr-author-cell">${NSC.escapeHtml(r.author)}</td>
+        <td><span class="tag">${NSC.escapeHtml(r.genre)}</span></td>
+        <td class="center">${r.pages}</td>
+        <td class="tbr-rating">★ ${r.goodreads}</td>
+        <td>${NSC.escapeHtml(r.member)}</td>
         <td class="tbr-actions-cell">
-          <button class="icon-btn edit-btn" title="Edit row">✎</button>
-          <button class="icon-btn danger delete-btn" title="Delete row">×</button>
+          <button class="icon-btn edit-btn" title="Edit nomination">✎</button>
+          <button class="icon-btn danger delete-btn" title="Delete">×</button>
         </td>
       </tr>
     `).join('');
 
-    // Wire up edits
-    tbody.querySelectorAll('td.editable').forEach(td => {
-      td.addEventListener('click', () => makeEditable(td));
-    });
+    // Pencil opens the edit modal, × deletes. No more click-into-cells.
     tbody.querySelectorAll('.edit-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const tr = btn.closest('tr');
-        tr.querySelectorAll('td.editable').forEach(makeEditable);
-        tr.querySelector('td.editable').focus();
+        const id = btn.closest('tr').dataset.id;
+        openTbrModal(id);
       });
     });
     tbody.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.closest('tr').dataset.id;
-        if (!confirm('Delete this book?')) return;
+        if (!confirm('Delete this nomination?')) return;
         rows = rows.filter(r => r.id !== id);
         persist();
         renderFilters();
@@ -249,63 +287,203 @@
     });
   }
 
-  function makeEditable(td) {
-    if (td.dataset.editing === '1') return;
-    td.dataset.editing = '1';
-    td.dataset.original = td.textContent;
-    // Strip tag/star for editing
-    const id = td.closest('tr').dataset.id;
-    const row = rows.find(r => r.id === id);
-    const field = td.dataset.field;
-    td.textContent = row[field] !== undefined ? row[field] : '';
-    td.setAttribute('contenteditable', 'true');
-    td.focus();
+  /* ============================================================
+     TBR add/edit modal — replaces the old inline-cell editing
+     ============================================================ */
+  let editingTbrId = null;
+  let tbrCoverState = null; // current intended cover value (data URL or null)
 
-    function commit() {
-      td.setAttribute('contenteditable', 'false');
-      td.dataset.editing = '';
-      const val = td.textContent.trim();
-      if (field === 'pages') row[field] = parseInt(val, 10) || 0;
-      else if (field === 'goodreads') row[field] = parseFloat(val) || 0;
-      else row[field] = val;
-      persist();
-      renderFilters();
-      renderRows();
+  const GENRE_OPTIONS = ['Biography', 'Fantasy', 'Fiction', 'Historical Fiction', 'Horror', 'Romance', 'Science Fiction'];
+
+  function populateGenreDropdown(currentVal) {
+    const sel = document.getElementById('tbr-genre-input');
+    let html = '<option value="">Select…</option>';
+    if (currentVal && !GENRE_OPTIONS.includes(currentVal)) {
+      html += `<option value="${NSC.escapeHtml(currentVal)}">${NSC.escapeHtml(currentVal)} (existing)</option>`;
     }
-    td.addEventListener('blur', commit, { once: true });
-    td.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); td.blur(); }
-      if (e.key === 'Escape') {
-        td.textContent = td.dataset.original;
-        td.setAttribute('contenteditable', 'false');
-        td.dataset.editing = '';
-      }
-    });
+    GENRE_OPTIONS.forEach(g => { html += `<option value="${NSC.escapeHtml(g)}">${NSC.escapeHtml(g)}</option>`; });
+    sel.innerHTML = html;
+    if (currentVal) sel.value = currentVal;
   }
 
-  document.getElementById('add-row').addEventListener('click', () => {
-    const newRow = {
-      id: 'tbr-' + Date.now(),
-      title: 'New Book Title',
-      author: 'Author',
-      genre: 'Fantasy',
-      pages: 300,
-      goodreads: 4.0,
-      member: 'Katherine'
+  function populateMemberDropdown(currentVal) {
+    const ml = NSC.memberList();
+    const sel = document.getElementById('tbr-member-input');
+    let html = '<option value="">Select…</option>';
+    // If editing a row whose nominator isn't in the member list, preserve it
+    if (currentVal && !ml.some(m => m.name === currentVal)) {
+      html += `<option value="${NSC.escapeHtml(currentVal)}">${NSC.escapeHtml(currentVal)} (existing)</option>`;
+    }
+    ml.forEach(m => { html += `<option value="${NSC.escapeHtml(m.name)}">${NSC.escapeHtml(m.name)}</option>`; });
+    sel.innerHTML = html;
+    if (currentVal) sel.value = currentVal;
+  }
+
+  function openTbrModal(rowId) {
+    editingTbrId = rowId || null;
+    document.getElementById('tbr-form').reset();
+    tbrCoverState = null;
+    resetTbrDropzone();
+
+    const editing = !!rowId;
+    document.getElementById('tbr-modal-title').innerHTML = editing
+      ? 'Edit <span class="accent">nomination</span>'
+      : 'Add a <span class="accent">nomination</span>';
+    document.getElementById('tbr-modal-sub').textContent = editing
+      ? 'Update any field — save commits the change for everyone.'
+      : 'All fields are required. The cover image is optional.';
+    document.getElementById('tbr-save-btn').innerHTML = editing
+      ? '<span class="btn-icon-arrow">»</span> Save Changes'
+      : '<span class="btn-icon-arrow">»</span> Save Nomination';
+
+    if (editing) {
+      const row = rows.find(r => r.id === rowId);
+      if (!row) return;
+      document.getElementById('tbr-title-input').value = row.title || '';
+      document.getElementById('tbr-author-input').value = row.author || '';
+      populateGenreDropdown(row.genre || '');
+      document.getElementById('tbr-pages-input').value = row.pages || '';
+      document.getElementById('tbr-goodreads-input').value = row.goodreads || '';
+      populateMemberDropdown(row.member || '');
+      if (row.cover) {
+        tbrCoverState = row.cover;
+        setTbrDropzoneImage(row.cover);
+      }
+    } else {
+      populateGenreDropdown('');
+      populateMemberDropdown('');
+    }
+
+    document.getElementById('tbr-modal').classList.add('open');
+  }
+
+  /* --- Drag-and-drop cover image with compression --- */
+  const tbrDropzone = document.getElementById('tbr-dropzone');
+  const tbrFileInput = document.getElementById('tbr-cover-file');
+  const tbrPreview = document.getElementById('tbr-dropzone-preview');
+  const tbrClearBtn = document.getElementById('tbr-dropzone-clear');
+
+  function setTbrDropzoneImage(src) {
+    tbrPreview.src = src;
+    tbrDropzone.classList.add('has-image');
+  }
+  function resetTbrDropzone() {
+    tbrCoverState = null;
+    tbrPreview.removeAttribute('src');
+    tbrDropzone.classList.remove('has-image');
+    tbrFileInput.value = '';
+  }
+
+  function handleTbrCoverFile(file) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      alert('Please drop an image file (PNG, JPG, GIF, WebP).');
+      return;
+    }
+    // Compress before storing — Firestore documents max out at ~1MB.
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_W = 600, MAX_H = 900;
+        let { width, height } = img;
+        if (width > MAX_W || height > MAX_H) {
+          const scale = Math.min(MAX_W / width, MAX_H / height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.82);
+        const sizeKB = Math.round((dataURL.length * 3) / 4 / 1024);
+        if (sizeKB > 900) {
+          alert(`Compressed image is still ${sizeKB}KB — try a smaller source file.`);
+          return;
+        }
+        tbrCoverState = dataURL;
+        setTbrDropzoneImage(dataURL);
+      };
+      img.onerror = () => alert('Could not read that image file.');
+      img.src = ev.target.result;
     };
-    rows.push(newRow);
+    reader.readAsDataURL(file);
+  }
+
+  tbrDropzone.addEventListener('click', (e) => {
+    if (e.target === tbrClearBtn) return;
+    tbrFileInput.click();
+  });
+  tbrDropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tbrFileInput.click(); }
+  });
+  tbrFileInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleTbrCoverFile(file);
+  });
+  tbrClearBtn.addEventListener('click', (e) => { e.stopPropagation(); resetTbrDropzone(); });
+
+  ['dragenter', 'dragover'].forEach(evt => {
+    tbrDropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      tbrDropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(evt => {
+    tbrDropzone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (evt === 'dragleave' && tbrDropzone.contains(e.relatedTarget)) return;
+      tbrDropzone.classList.remove('dragover');
+    });
+  });
+  tbrDropzone.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    tbrDropzone.classList.remove('dragover');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleTbrCoverFile(file);
+  });
+
+  // Form submit — create or update
+  document.getElementById('tbr-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      title:     document.getElementById('tbr-title-input').value.trim(),
+      author:    document.getElementById('tbr-author-input').value.trim(),
+      genre:     document.getElementById('tbr-genre-input').value,
+      pages:     parseInt(document.getElementById('tbr-pages-input').value, 10) || 0,
+      goodreads: parseFloat(document.getElementById('tbr-goodreads-input').value) || 0,
+      member:    document.getElementById('tbr-member-input').value
+    };
+
+    if (editingTbrId) {
+      const idx = rows.findIndex(r => r.id === editingTbrId);
+      if (idx >= 0) {
+        rows[idx] = { ...rows[idx], ...data };
+        if (tbrCoverState) rows[idx].cover = tbrCoverState;
+        else delete rows[idx].cover;
+      }
+    } else {
+      const newRow = { id: 'tbr-' + Date.now(), ...data };
+      if (tbrCoverState) newRow.cover = tbrCoverState;
+      rows.push(newRow);
+    }
+
     persist();
+    document.getElementById('tbr-modal').classList.remove('open');
+    editingTbrId = null;
     renderFilters();
     renderRows();
-    // Focus the new row's title cell
-    setTimeout(() => {
-      const tr = document.querySelector(`tr[data-id="${newRow.id}"]`);
-      if (tr) {
-        tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        makeEditable(tr.querySelector('td.editable'));
-      }
-    }, 50);
   });
+
+  document.getElementById('tbr-close').addEventListener('click', () => document.getElementById('tbr-modal').classList.remove('open'));
+  document.getElementById('tbr-cancel').addEventListener('click', () => document.getElementById('tbr-modal').classList.remove('open'));
+  document.getElementById('tbr-modal').addEventListener('click', (e) => { if (e.target.id === 'tbr-modal') e.currentTarget.classList.remove('open'); });
+
+  // Re-wire "Add Book" to open the modal in add mode
+  document.getElementById('add-row').addEventListener('click', () => openTbrModal(null));
 
   // "Reset to Defaults" disabled in shared mode — would affect everyone in the club.
   // If you ever want to restore the original list, edit data.js's INITIAL_TBR and
@@ -556,7 +734,10 @@
     confirmYesBtn.innerHTML = 'Saving…';
 
     try {
-      // 1) Add to the books collection as the next read
+      // 1) Add to the books collection as the next read.
+      //    Date and Where intentionally left blank — the user fills these in
+      //    when the meeting is scheduled. They flow from All Reads to Shelf
+      //    automatically because both pages read the same `books` collection.
       const freshBooks = NSC.loadBooks();
       const newBook = {
         id: 'b-' + Date.now(),
@@ -565,14 +746,15 @@
         author: w.author,
         genre: w.genre,
         pages: w.pages,
-        date: isoOneMonthFromToday(),
-        location: 'TBD',
+        date: null,
+        location: null,
         goodreads: w.goodreads,
-        ratings: { joanna: null, kat: null, lexey: null, mazhar: null, meesh: null, zyrian: null },
+        ratings: {},
         coverClass: 'cover-' + (1 + (freshBooks.length % 8)),
         coverEmblem: w.genre || 'Next Read',
         questions: []
       };
+      if (w.cover) newBook.cover = w.cover;
       freshBooks.push(newBook);
       await NSC.saveBooks(freshBooks);
 
@@ -586,7 +768,7 @@
           Locked in! <strong>${NSC.escapeHtml(w.title)}</strong> is the next read.
         </div>
         <p style="color: var(--dark-text-soft); font-size: 0.88rem; margin: 0;">
-          Added to the All Reads table with a placeholder date and location — edit those when you have them confirmed.
+          Cover, title, author, genre, pages, and Goodreads rating carry through to the Home page, All Reads table, and The Shelf. Fill in the meeting date and location on the All Reads table when they're set.
         </p>
       `;
       setTimeout(() => {
