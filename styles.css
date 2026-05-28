@@ -595,6 +595,66 @@ section { padding: 5rem 0; position: relative; }
 .num-card { padding-bottom: 4.5rem; }
 
 /* =============================================================
+   House Rules cards (home page)
+   ============================================================= */
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+.rule-card {
+  background: var(--cream);
+  border: 1px solid rgba(166, 104, 104, 0.18);
+  border-radius: 18px;
+  padding: 2rem 1.75rem 1.75rem 2.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.rule-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--red-primary);
+  box-shadow: var(--shadow-md);
+}
+.rule-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--red-primary), var(--mauve));
+}
+.rule-num {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 2.6rem;
+  color: var(--red-primary);
+  line-height: 1;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.01em;
+}
+.rule-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--red-deep);
+  margin: 0 0 0.6rem;
+  letter-spacing: -0.01em;
+}
+.rule-text {
+  color: var(--charcoal);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .rules-grid { grid-template-columns: 1fr; }
+  .rule-card { padding: 1.5rem 1.25rem 1.25rem 1.75rem; }
+  .rule-num { font-size: 2.2rem; }
+}
+
+/* =============================================================
    Book cards (light section)
    ============================================================= */
 .book-grid {
